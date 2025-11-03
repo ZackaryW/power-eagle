@@ -99,37 +99,43 @@ export class PluginDiscovery {
       // Get the extensions directory path
       const extensionsDir = await this.extensionsPath;
       
-      // Check if extensions directory exists
-      if (!fs.existsSync(extensionsDir)) {
+      // Check if extensions directory exists (async)
+      try {
+        await fs.promises.access(extensionsDir);
+      } catch {
         console.log(`Extensions directory does not exist: ${extensionsDir}`);
         return installedPlugins;
       }
 
-      // Read the extensions directory
-      const entries = fs.readdirSync(extensionsDir, { withFileTypes: true });
+      // Read the extensions directory (async)
+      const entries = await fs.promises.readdir(extensionsDir, { withFileTypes: true });
       
       // Filter for directories and symbolic links (to support symlinked plugins)
       const pluginDirs = entries.filter((entry: { isDirectory: () => any; isSymbolicLink: () => any; }) => 
         entry.isDirectory() || entry.isSymbolicLink());
       
-      for (const pluginDir of pluginDirs) {
+      // Process plugins in parallel for better performance
+      const pluginPromises = pluginDirs.map(async (pluginDir) => {
         try {
           const pluginPath = path.join(extensionsDir, pluginDir.name);
           const manifestPath = path.join(pluginPath, 'plugin.json');
           
-          // Check if plugin.json exists
-          if (!fs.existsSync(manifestPath)) {
+          // Check if plugin.json exists (async)
+          try {
+            await fs.promises.access(manifestPath);
+          } catch {
             console.warn(`No plugin.json found in ${pluginDir.name}`);
-            continue;
+            return null;
           }
           
-          // Read plugin.json
-          const manifestContent = fs.readFileSync(manifestPath, 'utf8');
+          // Read plugin.json (async)
+          const manifestContent = await fs.promises.readFile(manifestPath, 'utf8');
           const manifest = JSON.parse(manifestContent);
           
           // Validate manifest has required fields
           if (manifest.id && manifest.name) {
-            installedPlugins.push({
+            console.log(`Found installed plugin: ${manifest.name} (${manifest.id})`);
+            return {
               id: manifest.id,
               name: manifest.name,
               description: manifest.description,
@@ -137,14 +143,24 @@ export class PluginDiscovery {
               path: pluginPath,
               manifest,
               isBuiltin: false,
-            });
-            
-            console.log(`Found installed plugin: ${manifest.name} (${manifest.id})`);
+            };
           } else {
             console.warn(`Invalid manifest in ${pluginPath}: missing id or name`);
+            return null;
           }
         } catch (error) {
           console.warn(`Failed to load plugin from ${pluginDir.name}:`, error);
+          return null;
+        }
+      });
+
+      // Wait for all plugin loads to complete in parallel
+      const results = await Promise.all(pluginPromises);
+      
+      // Filter out null results and add to installedPlugins
+      for (const result of results) {
+        if (result !== null) {
+          installedPlugins.push(result);
         }
       }
     } catch (error) {

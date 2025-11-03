@@ -24,9 +24,9 @@ export class PluginLoader extends BaseManager {
         const fileContent = await eagle.fs.readFile(filePath, 'utf8');
         return fileContent;
       } else {
-        // Use Node.js fs directly with the absolute path
+        // Use Node.js fs promises API for non-blocking I/O
         const fs = require('fs');
-        const fileContent = fs.readFileSync(filePath, 'utf8');
+        const fileContent = await fs.promises.readFile(filePath, 'utf8');
         return fileContent;
       }
       

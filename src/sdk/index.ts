@@ -2,6 +2,12 @@
 
 import { Button, CardManager, Dialog } from './visual';
 import { rootListeners } from './root-listeners';
+import * as filesModule from './utils/files';
+import * as pathsModule from './utils/paths';
+import * as domModule from './utils/dom';
+import * as commonModule from './utils/common';
+import * as opModule from './utils/op';
+import webapi from './webapi';
 
 export { Button, ButtonManager } from './visual/button';
 export { CardManager } from './visual/card';
@@ -31,17 +37,8 @@ export async function createPowerSDKContext(
   pluginId: string,
   manifest?: any
 ) {
-  // Import all SDK components
-  const EagleApi = await import('./webapi');
-  
-  // Import utils by module
-  const filesModule = await import('./utils/files');
-  const pathsModule = await import('./utils/paths');
-  const domModule = await import('./utils/dom');
-  const commonModule = await import('./utils/common');
-  const opModule = await import('./utils/op');
-
-    return {
+  // Use static imports instead of dynamic imports for better bundling
+  return {
     // Storage functionality
     storage,
     // DOM container
@@ -63,7 +60,6 @@ export async function createPowerSDKContext(
       files: {
         createFile: filesModule.createFile,
         extractZip: filesModule.extractZip,
-        listZipContents: filesModule.listZipContents,
         formatBytes: filesModule.formatBytes
       },
       
@@ -105,7 +101,7 @@ export async function createPowerSDKContext(
     },
     
     // Eagle API
-    webapi: EagleApi.default,
+    webapi: webapi,
     
     // Root event listeners for Eagle state changes
     listeners: rootListeners

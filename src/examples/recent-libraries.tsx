@@ -121,9 +121,9 @@ export const plugin = async (context: any) => {
                          process.env.HOME + "/.local/share");
       const settingsPath = `${roamingPath}/eagle/Settings`;
       
-      // Read Eagle settings file
+      // Read Eagle settings file (async)
       const fs = require('fs');
-      const settingsData = fs.readFileSync(settingsPath, 'utf8');
+      const settingsData = await fs.promises.readFile(settingsPath, 'utf8');
       const settings = JSON.parse(settingsData);
       
       return settings.libraryHistory || [];
@@ -301,9 +301,9 @@ export const plugin = async (context: any) => {
                          process.env.HOME + "/.local/share");
       const settingsPath = `${roamingPath}/eagle/Settings`;
       
-      // Read current settings
+      // Read current settings (async)
       const fs = require('fs');
-      const settingsData = fs.readFileSync(settingsPath, 'utf8');
+      const settingsData = await fs.promises.readFile(settingsPath, 'utf8');
       const settings = JSON.parse(settingsData);
       
       // Filter out invalid paths
@@ -314,9 +314,9 @@ export const plugin = async (context: any) => {
         }
       }
       
-      // Update settings
+      // Update settings (async)
       settings.libraryHistory = validPaths;
-      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+      await fs.promises.writeFile(settingsPath, JSON.stringify(settings, null, 2));
       
       return validPaths;
     } catch (error) {

@@ -148,8 +148,15 @@ export class PythonScriptEvaler extends BaseManager {
     const lines = data.split('\n');
     const filteredLines: string[] = [];
     
+    // Get token once for all lines to avoid repeated async calls
+    const currentToken = await webapi._internalGetToken();
+    const callbackPrefix = currentToken ? `$$$${currentToken}$$$${pluginId}$$$` : null;
+    
     for (const line of lines) {
-      if (await this.isCallbackSignal(line, pluginId)) {
+      const trimmed = line.trim();
+      
+      // Fast check: if no callback prefix possible, skip signal detection
+      if (callbackPrefix && trimmed.startsWith(callbackPrefix)) {
         this.debugLog(`Detected callback signal: ${line}`);
         // Process callback signal but don't include in filtered output
         try {
