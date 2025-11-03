@@ -219,20 +219,28 @@ export class PythonScriptRunner extends BaseManager {
     return {
       log: (message: string) => {
         const timestamp = new Date().toLocaleTimeString();
+        // Avoid repeated DOM reflows by batching updates
         outputTextbox.value += `[${timestamp}] ${message}\n`;
-        outputTextbox.scrollTop = outputTextbox.scrollHeight;
+        // Use requestAnimationFrame to batch scroll updates
+        requestAnimationFrame(() => {
+          outputTextbox.scrollTop = outputTextbox.scrollHeight;
+        });
       },
       error: (message: string) => {
         const timestamp = new Date().toLocaleTimeString();
         outputTextbox.value += `[${timestamp}] ERROR: ${message}\n`;
-        outputTextbox.scrollTop = outputTextbox.scrollHeight;
+        requestAnimationFrame(() => {
+          outputTextbox.scrollTop = outputTextbox.scrollHeight;
+        });
       },
       clear: () => {
         outputTextbox.value = '';
       },
       append: (text: string) => {
         outputTextbox.value += text;
-        outputTextbox.scrollTop = outputTextbox.scrollHeight;
+        requestAnimationFrame(() => {
+          outputTextbox.scrollTop = outputTextbox.scrollHeight;
+        });
       }
     };
   }
