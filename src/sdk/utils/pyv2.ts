@@ -86,6 +86,7 @@ export class PythonExecutorV2 extends BaseManager {
 
   /**
    * Gets plugin ID from script path by reading plugin.json
+   * Note: This is a synchronous method as it's called in contexts where async is not possible
    * @param scriptPath - Path to the Python script
    * @returns string | null - Plugin ID or null if not found
    */
@@ -98,7 +99,7 @@ export class PythonExecutorV2 extends BaseManager {
       const scriptDir = path.dirname(scriptPath);
       const pluginJsonPath = path.join(scriptDir, 'plugin.json');
       
-      // Use existsSync to avoid exception overhead, then async read
+      // Use existsSync to avoid exception overhead
       if (fs.existsSync(pluginJsonPath)) {
         const pluginManifest = JSON.parse(fs.readFileSync(pluginJsonPath, 'utf8'));
         return pluginManifest.id || null;

@@ -155,7 +155,7 @@ export class PythonScriptEvaler extends BaseManager {
     for (const line of lines) {
       const trimmed = line.trim();
       
-      // Fast check: if no callback prefix possible, skip signal detection
+      // Fast check: if line starts with callback prefix, it's a callback signal
       if (callbackPrefix && trimmed.startsWith(callbackPrefix)) {
         this.debugLog(`Detected callback signal: ${line}`);
         // Process callback signal but don't include in filtered output
