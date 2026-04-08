@@ -1,0 +1,9 @@
+pre-commit:
+  parallel: false
+  commands:
+    generate-seeds:
+      run: pnpm generate:seeds && git add src/app/seeds
+      stage_fixed: true
+    build:
+      run: pnpm run build
+      stage_fixed: true

@@ -1,10 +1,13 @@
-// HTTP client for Eagle's web API.
-// This is separate from the host-provided global eagle runtime object.
-// %ZMEM:a9fd% decision #sdk #webapi #identity "webapi is the HTTP client identity for Eagle's web API and should remain conceptually separate from the host-provided eagle runtime." %ZMEM%
-interface EagleApiResponse<T = any> {
+/**
+ * Describe the generic HTTP response envelope returned by Eagle's web API.
+ */
+interface EagleApiResponse<T = unknown> {
   data: T;
 }
 
+/**
+ * Describe the application info payload used to resolve the developer token.
+ */
 interface ApplicationInfo {
   preferences: {
     developer: {
@@ -13,16 +16,9 @@ interface ApplicationInfo {
   };
 }
 
-export interface FolderCreateParams {
-  folderName: string;
-  parent?: string | null;
-}
-
-export interface FolderRenameParams {
-  folderId: string;
-  newName: string;
-}
-
+/**
+ * Describe the folder update payload for the Eagle web API.
+ */
 interface FolderUpdateParams {
   folderId: string;
   newName?: string | null;
@@ -30,14 +26,9 @@ interface FolderUpdateParams {
   newColor?: string | null;
 }
 
-export interface LibrarySwitchParams {
-  libraryPath: string;
-}
-
-export interface LibraryIconParams {
-  libraryPath: string;
-}
-
+/**
+ * Describe the item update payload for the Eagle web API.
+ */
 interface ItemUpdateParams {
   itemId: string;
   tags?: string[] | null;
@@ -46,14 +37,9 @@ interface ItemUpdateParams {
   star?: number | null;
 }
 
-export interface ItemRefreshParams {
-  id: string;
-}
-
-export interface ItemMoveToTrashParams {
-  itemIds: string[];
-}
-
+/**
+ * Describe the item list payload for the Eagle web API.
+ */
 interface ItemListParams {
   limit?: number;
   offset?: number;
@@ -64,14 +50,9 @@ interface ItemListParams {
   folders?: string[] | null;
 }
 
-export interface ItemThumbnailParams {
-  id: string;
-}
-
-export interface ItemInfoParams {
-  id: string;
-}
-
+/**
+ * Describe the add-bookmark payload for the Eagle web API.
+ */
 interface ItemAddBookmarkParams {
   url: string;
   name: string;
@@ -81,6 +62,9 @@ interface ItemAddBookmarkParams {
   folderId?: string | null;
 }
 
+/**
+ * Describe the add-from-url payload for the Eagle web API.
+ */
 interface ItemAddFromUrlParams {
   url: string;
   name: string;
@@ -90,9 +74,12 @@ interface ItemAddFromUrlParams {
   annotation?: string | null;
   modificationTime?: number | null;
   folderId?: string | null;
-  headers?: any | null;
+  headers?: Record<string, unknown> | null;
 }
 
+/**
+ * Describe the add-from-path payload for the Eagle web API.
+ */
 interface ItemAddFromPathParams {
   path: string;
   name: string;
@@ -102,226 +89,176 @@ interface ItemAddFromPathParams {
   folderId?: string | null;
 }
 
-interface ItemAddFromURLsParams {
-  items: any[];
+/**
+ * Describe the add-from-urls payload for the Eagle web API.
+ */
+interface ItemAddFromUrlsParams {
+  items: unknown[];
   folderId?: string | null;
 }
 
-class EagleApi {
+/**
+ * Implement the previously supported Eagle web API surface used by oldref.
+ */
+class EagleWebApi {
   private static token: string | null = null;
 
-
   /**
-   * Gets the API token from Eagle application
-   * @returns Promise<string | null> - API token or null if not available
+   * Resolve and cache the Eagle developer token.
    */
-  public static async _internalGetToken(): Promise<string | null> {
-    if (EagleApi.token) {
-      return EagleApi.token;
+  public static async getToken(): Promise<string | null> {
+    if (EagleWebApi.token) {
+      return EagleWebApi.token;
     }
 
     try {
-      const res = await fetch("http://localhost:41595/api/application/info");
-
-      if (!res) {
-        throw new Error("No response from Eagle");
-      }
-
-      const raw: EagleApiResponse<ApplicationInfo> = await res.json();
-      const token = raw.data.preferences.developer.apiToken;
-
+      const response = await fetch('http://localhost:41595/api/application/info');
+      const payload: EagleApiResponse<ApplicationInfo> = await response.json();
+      const token = payload.data.preferences.developer.apiToken;
       if (token) {
-        EagleApi.token = token;
+        EagleWebApi.token = token;
         return token;
       }
     } catch (error) {
-      console.error(error);
+      console.error('Failed to resolve Eagle API token:', error);
     }
 
     return null;
   }
 
   /**
-   * Makes internal HTTP request to Eagle API
-   * @param path - API endpoint path
-   * @param methodname - HTTP method (GET/POST)
-   * @param data - Request body data for POST requests
-   * @param params - Query parameters
-   * @returns Promise<any> - API response data
+   * Send one authenticated request to the Eagle local web API.
    */
-  private static async _internalRequest(
-    path: string,
-    methodname: 'GET' | 'POST',
-    data: any = null,
-    params: Record<string, any> | null = null
-  ): Promise<any> {
-    const token = await EagleApi._internalGetToken();
+  private static async request(
+    apiPath: string,
+    method: 'GET' | 'POST',
+    data: Record<string, unknown> | null = null,
+    params: Record<string, unknown> | null = null,
+  ): Promise<unknown> {
+    const token = await EagleWebApi.getToken();
+    if (!token) {
+      throw new Error('No Eagle API token found.');
+    }
 
-    if (!token) throw new Error("No token found");
-
-    let url = `http://localhost:41595/api/${path}?token=${token}`;
-
+    let requestUrl = `http://localhost:41595/api/${apiPath}?token=${token}`;
     if (params) {
-      params = Object.fromEntries(
-        Object.entries(params).filter(([, v]) => v !== null)
-      );
-
-      url +=
-        "&" +
-        Object.entries(params)
-          .map(([k, v]) => `${k}=${v}`)
-          .join("&");
+      const filteredParams = Object.fromEntries(Object.entries(params).filter(([, value]) => value !== null && value !== undefined));
+      const paramString = Object.entries(filteredParams).map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`).join('&');
+      if (paramString) {
+        requestUrl += `&${paramString}`;
+      }
     }
 
-    if (methodname === "POST" && data) {
-      data = Object.fromEntries(
-        Object.entries(data).filter(([, v]) => v !== null)
-      );
-    }
+    const body = method === 'POST' && data
+      ? JSON.stringify(Object.fromEntries(Object.entries(data).filter(([, value]) => value !== null && value !== undefined)))
+      : undefined;
 
-    try {
-      const response = await fetch(
-        url,
-        methodname === "POST"
-          ? {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(data),
-            }
-          : undefined
-      );
-
-      const json: EagleApiResponse = await response.json();
-      return json.data;
-    } catch (error) {
-      console.error("Request failed:", error);
-      throw error;
-    }
+    const response = await fetch(requestUrl, body
+      ? {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body,
+        }
+      : undefined,
+    );
+    const payload: EagleApiResponse = await response.json();
+    return payload.data;
   }
 
   /**
-   * Application-related API methods
+   * Expose application web API methods.
    */
   static application = class {
     /**
-     * Gets application information
-     * @returns Promise<any> - Application info
+     * Read Eagle application info through the local web API.
      */
-    static info(): Promise<any> {
-      return EagleApi._internalRequest("application/info", "GET");
+    static info(): Promise<unknown> {
+      return EagleWebApi.request('application/info', 'GET');
     }
   };
 
   /**
-   * Folder-related API methods
+   * Expose folder web API methods.
    */
   static folder = class {
     /**
-     * Creates a new folder
-     * @param name - Folder name
-     * @param parentId - Parent folder ID (optional)
-     * @returns Promise<any> - Created folder data
+     * Create one folder through the Eagle web API.
      */
-    static create(name: string, parentId: string | null = null): Promise<any> {
-      return EagleApi._internalRequest("folder/create", "POST", {
-        folderName: name,
-        parent: parentId,
-      });
+    static create(name: string, parentId: string | null = null): Promise<unknown> {
+      return EagleWebApi.request('folder/create', 'POST', { folderName: name, parent: parentId });
     }
 
     /**
-     * Renames a folder
-     * @param folderId - Folder ID to rename
-     * @param newName - New folder name
-     * @returns Promise<any> - Rename result
+     * Rename one folder through the Eagle web API.
      */
-    static rename(folderId: string, newName: string): Promise<any> {
-      return EagleApi._internalRequest("folder/rename", "POST", {
-        folderId,
-        newName,
-      });
+    static rename(folderId: string, newName: string): Promise<unknown> {
+      return EagleWebApi.request('folder/rename', 'POST', { folderId, newName });
     }
 
     /**
-     * Updates folder properties
-     * @param params - Update parameters
-     * @returns Promise<any> - Update result
+     * Update one folder through the Eagle web API.
      */
-    static update(params: FolderUpdateParams): Promise<any> {
-      return EagleApi._internalRequest("folder/update", "POST", params);
+    static update(params: FolderUpdateParams): Promise<unknown> {
+      return EagleWebApi.request('folder/update', 'POST', params as unknown as Record<string, unknown>);
     }
 
     /**
-     * Lists all folders
-     * @returns Promise<any> - Folder list
+     * List folders through the Eagle web API.
      */
-    static list(): Promise<any> {
-      return EagleApi._internalRequest("folder/list", "GET");
+    static list(): Promise<unknown> {
+      return EagleWebApi.request('folder/list', 'GET');
     }
 
     /**
-     * Lists recent folders
-     * @returns Promise<any> - Recent folder list
+     * List recent folders through the Eagle web API.
      */
-    static listRecent(): Promise<any> {
-      return EagleApi._internalRequest("folder/listRecent", "GET");
+    static listRecent(): Promise<unknown> {
+      return EagleWebApi.request('folder/listRecent', 'GET');
     }
   };
 
   /**
-   * Library-related API methods
+   * Expose library web API methods.
    */
   static library = class {
     /**
-     * Gets library information
-     * @returns Promise<any> - Library info
+     * Read library info through the Eagle web API.
      */
-    static info(): Promise<any> {
-      return EagleApi._internalRequest("library/info", "GET");
+    static info(): Promise<unknown> {
+      return EagleWebApi.request('library/info', 'GET');
     }
 
     /**
-     * Gets library history
-     * @returns Promise<any> - Library history
+     * Read library history through the Eagle web API.
      */
-    static history(): Promise<any> {
-      return EagleApi._internalRequest("library/history", "GET");
+    static history(): Promise<unknown> {
+      return EagleWebApi.request('library/history', 'GET');
     }
 
     /**
-     * Switches to a different library
-     * @param libraryPath - Path to the library
-     * @returns Promise<any> - Switch result
+     * Switch the active library through the Eagle web API.
      */
-    static switch(libraryPath: string): Promise<any> {
-      return EagleApi._internalRequest("library/switch", "POST", {
-        libraryPath,
-      });
+    static switch(libraryPath: string): Promise<unknown> {
+      return EagleWebApi.request('library/switch', 'POST', { libraryPath });
     }
 
     /**
-     * Gets library icon
-     * @param libraryPath - Path to the library
-     * @returns Promise<any> - Library icon data
+     * Read library icon data through the Eagle web API.
      */
-    static icon(libraryPath: string): Promise<any> {
-      return EagleApi._internalRequest("library/icon", "GET", null, {
-        libraryPath,
-      });
+    static icon(libraryPath: string): Promise<unknown> {
+      return EagleWebApi.request('library/icon', 'GET', null, { libraryPath });
     }
   };
 
   /**
-   * Item-related API methods
+   * Expose item web API methods.
    */
   static item = class {
     /**
-     * Updates item properties
-     * @param params - Update parameters
-     * @returns Promise<any> - Update result
+     * Update one item through the Eagle web API.
      */
-    static update(params: ItemUpdateParams): Promise<any> {
-      return EagleApi._internalRequest("item/update", "POST", {
+    static update(params: ItemUpdateParams): Promise<unknown> {
+      return EagleWebApi.request('item/update', 'POST', {
         id: params.itemId,
         tags: params.tags,
         annotation: params.annotation,
@@ -331,104 +268,80 @@ class EagleApi {
     }
 
     /**
-     * Refreshes item thumbnail
-     * @param itemId - Item ID
-     * @returns Promise<any> - Refresh result
+     * Refresh one item thumbnail through the Eagle web API.
      */
-    static refreshThumbnail(itemId: string): Promise<any> {
-      return EagleApi._internalRequest("item/refreshThumbnail", "POST", {
-        id: itemId,
-      });
+    static refreshThumbnail(itemId: string): Promise<unknown> {
+      return EagleWebApi.request('item/refreshThumbnail', 'POST', { id: itemId });
     }
 
     /**
-     * Refreshes item color palette
-     * @param itemId - Item ID
-     * @returns Promise<any> - Refresh result
+     * Refresh one item palette through the Eagle web API.
      */
-    static refreshPalette(itemId: string): Promise<any> {
-      return EagleApi._internalRequest("item/refreshPalette", "POST", {
-        id: itemId,
-      });
+    static refreshPalette(itemId: string): Promise<unknown> {
+      return EagleWebApi.request('item/refreshPalette', 'POST', { id: itemId });
     }
 
     /**
-     * Moves items to trash
-     * @param itemIds - Array of item IDs
-     * @returns Promise<any> - Move result
+     * Move items to trash through the Eagle web API.
      */
-    static moveToTrash(itemIds: string[]): Promise<any> {
-      return EagleApi._internalRequest("item/moveToTrash", "POST", { itemIds });
+    static moveToTrash(itemIds: string[]): Promise<unknown> {
+      return EagleWebApi.request('item/moveToTrash', 'POST', { itemIds });
     }
 
     /**
-     * Lists items with filters
-     * @param params - List parameters
-     * @returns Promise<any> - Item list
+     * List items through the Eagle web API.
      */
-    static list(params: ItemListParams = {}): Promise<any> {
-      return EagleApi._internalRequest("item/list", "GET", null, params);
+    static list(params: ItemListParams = {}): Promise<unknown> {
+      return EagleWebApi.request('item/list', 'GET', null, params as unknown as Record<string, unknown>);
     }
 
     /**
-     * Gets item thumbnail
-     * @param itemId - Item ID
-     * @returns Promise<any> - Thumbnail data
+     * Read item thumbnail data through the Eagle web API.
      */
-    static getThumbnail(itemId: string): Promise<any> {
-      return EagleApi._internalRequest("item/thumbnail", "GET", null, {
-        id: itemId,
-      });
+    static getThumbnail(itemId: string): Promise<unknown> {
+      return EagleWebApi.request('item/thumbnail', 'GET', null, { id: itemId });
     }
 
     /**
-     * Gets item information
-     * @param itemId - Item ID
-     * @returns Promise<any> - Item info
+     * Read item info through the Eagle web API.
      */
-    static getInfo(itemId: string): Promise<any> {
-      return EagleApi._internalRequest("item/info", "GET", null, {
-        id: itemId,
-      });
+    static getInfo(itemId: string): Promise<unknown> {
+      return EagleWebApi.request('item/info', 'GET', null, { id: itemId });
     }
 
     /**
-     * Adds bookmark item
-     * @param params - Bookmark parameters
-     * @returns Promise<any> - Add result
+     * Add one bookmark through the Eagle web API.
      */
-    static addBookmark(params: ItemAddBookmarkParams): Promise<any> {
-      return EagleApi._internalRequest("item/addBookmark", "POST", params);
+    static addBookmark(params: ItemAddBookmarkParams): Promise<unknown> {
+      return EagleWebApi.request('item/addBookmark', 'POST', params as unknown as Record<string, unknown>);
     }
 
     /**
-     * Adds item from URL
-     * @param params - URL parameters
-     * @returns Promise<any> - Add result
+     * Add one URL item through the Eagle web API.
      */
-    static addFromUrl(params: ItemAddFromUrlParams): Promise<any> {
-      return EagleApi._internalRequest("item/addFromUrl", "POST", params);
+    static addFromUrl(params: ItemAddFromUrlParams): Promise<unknown> {
+      return EagleWebApi.request('item/addFromUrl', 'POST', params as unknown as Record<string, unknown>);
     }
 
     /**
-     * Adds item from file path
-     * @param params - Path parameters
-     * @returns Promise<any> - Add result
+     * Add one file-path item through the Eagle web API.
      */
-    static addFromPath(params: ItemAddFromPathParams): Promise<any> {
-      return EagleApi._internalRequest("item/addFromPath", "POST", params);
+    static addFromPath(params: ItemAddFromPathParams): Promise<unknown> {
+      return EagleWebApi.request('item/addFromPath', 'POST', params as unknown as Record<string, unknown>);
     }
 
     /**
-     * Adds multiple items from URLs
-     * @param params - URLs parameters
-     * @returns Promise<any> - Add result
+     * Add multiple URL items through the Eagle web API.
      */
-    static addFromURLs(params: ItemAddFromURLsParams): Promise<any> {
-      return EagleApi._internalRequest("item/addFromURLs", "POST", params);
+    static addFromUrls(params: ItemAddFromUrlsParams): Promise<unknown> {
+      return EagleWebApi.request('item/addFromURLs', 'POST', params as unknown as Record<string, unknown>);
     }
   };
 }
 
-export type WebEagleApi = typeof EagleApi;
-export default EagleApi;
+/**
+ * Export the Eagle web API type for SDK consumers.
+ */
+export type WebEagleApi = typeof EagleWebApi;
+
+export default EagleWebApi;

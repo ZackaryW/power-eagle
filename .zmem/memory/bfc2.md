@@ -4,9 +4,9 @@ type: core_requirement
 tags:
 - plugins
 - authoring
-status: active
+status: archived
 created_at: '2026-04-08T03:17:08Z'
-updated_at: '2026-04-08T03:17:08Z'
+updated_at: '2026-04-08T18:23:42Z'
 metadata: {}
 custom: {}
 ---

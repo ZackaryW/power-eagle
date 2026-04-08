@@ -1,33 +1,90 @@
+type EagleIconColor =
+  | 'red'
+  | 'orange'
+  | 'yellow'
+  | 'green'
+  | 'aqua'
+  | 'blue'
+  | 'purple'
+  | 'pink';
+
+type EagleTheme =
+  | 'Auto'
+  | 'LIGHT'
+  | 'LIGHTGRAY'
+  | 'GRAY'
+  | 'DARK'
+  | 'BLUE'
+  | 'PURPLE';
+
+type ItemShape =
+  | 'square'
+  | 'portrait'
+  | 'panoramic-portrait'
+  | 'landscape'
+  | 'panoramic-landscape';
+
+type DialogOpenProperty =
+  | 'openFile'
+  | 'openDirectory'
+  | 'multiSelections'
+  | 'showHiddenFiles'
+  | 'createDirectory'
+  | 'promptToCreate';
+
+type DialogSaveProperty =
+  | 'openDirectory'
+  | 'showHiddenFiles'
+  | 'createDirectory';
+
+type SmartFolderMatch = 'AND' | 'OR';
+type SmartFolderBoolean = 'TRUE' | 'FALSE';
+type SmartFolderRuleValue =
+  | string
+  | number
+  | boolean
+  | Array<string | number | boolean>;
+
 declare global {
   const eagle: {
+    onPluginCreate(callback: (plugin: PluginContext) => void): void;
+    onPluginRun(callback: () => void): void;
+    onPluginBeforeExit(callback: () => void): void;
+    onPluginShow(callback: () => void): void;
+    onPluginHide(callback: () => void): void;
+    onLibraryChanged(callback: (libraryPath: string) => void): void;
+    onThemeChanged(callback: (theme: EagleTheme) => void): void;
+
     tag: {
-      //returns all tags
-      get(): Promise<Tag[]>;
-      // returns recently used tags
-      getRecents(): Promise<Tag[]>;
+      get(options?: { name?: string }): Promise<Tag[]>;
+      getRecentTags(): Promise<Tag[]>;
+      getStarredTags(): Promise<Tag[]>;
+      merge(options: {
+        source: string;
+        target: string;
+      }): Promise<{
+        affectedItems: number;
+        sourceRemoved: boolean;
+      }>;
     };
+
     tagGroup: {
       get(): Promise<TagGroup[]>;
       create(options: {
         name: string;
-        color:
-          | 'red'
-          | 'orange'
-          | 'yellow'
-          | 'green'
-          | 'aqua'
-          | 'blue'
-          | 'purple'
-          | 'pink';
         tags: string[];
+        color?: EagleIconColor;
+        description?: string;
       }): Promise<TagGroup>;
     };
+
     library: {
       info(): Promise<LibraryInfo>;
       readonly name: string;
       readonly path: string;
       readonly modificationTime: number;
     };
+
     window: {
       show(): Promise<void>;
       showInactive(): Promise<void>;
@@ -60,6 +117,7 @@ declare global {
       capturePage(rect?: Rectangle): Promise<NativeImage>;
       setReferer(url: string): void;
     };
+
     app: {
       isDarkColors(): boolean;
       getPath(name: AppPath): Promise<string>;
@@ -84,20 +142,15 @@ declare global {
         | 'ru_RU';
       readonly arch: 'x64' | 'arm64' | 'x86';
       readonly platform: 'darwin' | 'win32';
-      readonly env: { [key: string]: string };
+      readonly env: Record<string, string>;
       readonly execPath: string;
       readonly pid: number;
       readonly isWindows: boolean;
       readonly isMac: boolean;
       readonly runningUnderARM64Translation: boolean;
-      readonly theme:
-        | 'LIGHT'
-        | 'LIGHTGRAY'
-        | 'GRAY'
-        | 'DARK'
-        | 'BLUE'
-        | 'PURPLE';
+      readonly theme: Exclude<EagleTheme, 'Auto'>;
     };
+
     os: {
       tmpdir(): string;
       version(): string;
@@ -107,109 +160,47 @@ declare global {
       homedir(): string;
       arch(): 'x64' | 'arm64' | 'x86';
     };
+
     screen: {
       getCursorScreenPoint(): Promise<Point>;
       getPrimaryDisplay(): Promise<Display>;
       getAllDisplays(): Promise<Display[]>;
       getDisplayNearestPoint(point: Point): Promise<Display>;
     };
+
     notification: {
       show(options: {
         title: string;
-        description: string;
+        body: string;
         icon?: string;
         mute?: boolean;
         duration?: number;
       }): Promise<void>;
     };
-    event: {
-      onPluginCreate(callback: (plugin: any) => void): void;
-      onPluginRun(callback: (plugin: any) => void): void;
-      onPluginBeforeExit(callback: () => void): void;
-      onPluginShow(callback: () => void): void;
-      onPluginHide(callback: () => void): void;
-      onLibraryChanged(callback: (path: string) => void): void;
-      onThemeChanged(
-        callback: (
-          theme:
-            | 'Auto'
-            | 'LIGHT'
-            | 'LIGHTGRAY'
-            | 'GRAY'
-            | 'DARK'
-            | 'BLUE'
-            | 'PURPLE'
-        ) => void
-      ): void;
-    };
+
     item: {
-      get(options: {
-        id?: string;
-        ids?: string[];
-        isSelected?: boolean;
-        isUntagged?: boolean;
-        isUnfiled?: boolean;
-        keywords?: string[];
-        tags?: string[];
-        folders?: string[];
-        ext?: string;
-        annotation?: string;
-        rating?: number;
-        url?: string;
-        shape?:
-          | 'square'
-          | 'portrait'
-          | 'panoramic-portrait'
-          | 'landscape'
-          | 'panoramic-landscape';
-      }): Promise<Item[]>;
+      get(options?: ItemQueryOptions): Promise<Item[]>;
       getAll(): Promise<Item[]>;
       getById(itemId: string): Promise<Item>;
       getByIds(itemIds: string[]): Promise<Item[]>;
       getSelected(): Promise<Item[]>;
-      addFromURL(
-        url: string,
-        options?: {
-          name?: string;
-          website?: string;
-          tags?: string[];
-          folders?: string[];
-          annotation?: string;
-        }
-      ): Promise<string>;
-      addFromBase64(
-        base64: string,
-        options?: {
-          name?: string;
-          website?: string;
-          tags?: string[];
-          folders?: string[];
-          annotation?: string;
-        }
-      ): Promise<string>;
-      addFromPath(
-        path: string,
-        options?: {
-          name?: string;
-          website?: string;
-          tags?: string[];
-          folders?: string[];
-          annotation?: string;
-        }
-      ): Promise<string>;
+      getIdsWithModifiedAt(): Promise<Array<{ id: string; modifiedAt: number }>>;
+      count(options: ItemQueryOptions): Promise<number>;
+      countAll(): Promise<number>;
+      countSelected(): Promise<number>;
+      select(itemIds: string[]): Promise<boolean>;
+      addFromURL(url: string, options?: ItemAddOptions): Promise<string>;
+      addFromBase64(base64: string, options?: ItemAddOptions): Promise<string>;
+      addFromPath(path: string, options?: ItemAddOptions): Promise<string>;
       addBookmark(
         url: string,
-        options?: {
-          name?: string;
-          base64?: string;
-          tags?: string[];
-          folders?: string[];
-          annotation?: string;
-        }
+        options?: ItemBookmarkOptions
       ): Promise<string>;
-      open(itemId: string): Promise<boolean>;
+      open(itemId: string, options?: { window?: boolean }): Promise<boolean>;
     };
+
     folder: {
+      readonly IconColor: EagleIconColorMap;
       create(options: {
         name: string;
         description?: string;
@@ -222,7 +213,7 @@ declare global {
           description?: string;
         }
       ): Promise<Folder>;
-      get(options: {
+      get(options?: {
         id?: string;
         ids?: string[];
         isSelected?: boolean;
@@ -235,38 +226,52 @@ declare global {
       getRecents(): Promise<Folder[]>;
       open(folderId: string): Promise<void>;
     };
-    contextMenu: {
-      open(
-        menuItems: {
-          id: string;
-          label: string;
-          submenu?: {
-            id: string;
-            label: string;
-            click?: () => void;
-            submenu?: any[];
-          }[];
-          click?: () => void;
-        }[]
-      ): Promise<void>;
+
+    smartFolder: {
+      readonly IconColor: EagleIconColorMap;
+      readonly Rule: {
+        new (
+          property: string,
+          method: string,
+          value?: SmartFolderRuleValue
+        ): SmartFolderRule;
+      };
+      readonly Condition: {
+        create(
+          match: SmartFolderMatch,
+          rules: SmartFolderRule[],
+          boolean?: SmartFolderBoolean
+        ): SmartFolderCondition;
+      };
+      create(options: {
+        name: string;
+        conditions: SmartFolderCondition[];
+        description?: string;
+        iconColor?: EagleIconColor;
+        parent?: string;
+      }): Promise<SmartFolder>;
+      get(options?: { id?: string; ids?: string[] }): Promise<SmartFolder[]>;
+      getAll(): Promise<SmartFolder[]>;
+      getById(smartFolderId: string): Promise<SmartFolder>;
+      getByIds(smartFolderIds: string[]): Promise<SmartFolder[]>;
+      remove(smartFolderId: string): Promise<boolean>;
+      getRules(): Promise<Record<string, SmartFolderRuleSchema>>;
+      rule(
+        property: string
+      ): Record<string, (value?: SmartFolderRuleValue) => SmartFolderRule>;
     };
+
+    contextMenu: {
+      open(menuItems: MenuItem[]): Promise<void>;
+    };
+
     dialog: {
       showOpenDialog(options: {
         title?: string;
         defaultPath?: string;
         buttonLabel?: string;
-        filters?: {
-          name: string;
-          extensions: string[];
-        }[];
-        properties?: (
-          | 'openFile'
-          | 'openDirectory'
-          | 'multiSelections'
-          | 'showHiddenFiles'
-          | 'createDirectory'
-          | 'promptToCreate'
-        )[];
+        filters?: FileFilter[];
+        properties?: DialogOpenProperty[];
         message?: string;
       }): Promise<{
         canceled: boolean;
@@ -276,15 +281,8 @@ declare global {
         title?: string;
         defaultPath?: string;
         buttonLabel?: string;
-        filters?: {
-          name: string;
-          extensions: string[];
-        }[];
-        properties?: (
-          | 'openDirectory'
-          | 'showHiddenFiles'
-          | 'createDirectory'
-        )[];
+        filters?: FileFilter[];
+        properties?: DialogSaveProperty[];
       }): Promise<{
         canceled: boolean;
         filePath?: string;
@@ -300,11 +298,12 @@ declare global {
       }>;
       showErrorBox(title: string, content: string): Promise<void>;
     };
+
     clipboard: {
       clear(): void;
       has(format: string): boolean;
       writeText(text: string): void;
-      readText(): Promise<string>;
+      readText(): string;
       writeBuffer(format: string, buffer: Buffer): void;
       readBuffer(format: string): Buffer;
       writeImage(image: NativeImage): void;
@@ -313,15 +312,18 @@ declare global {
       readHTML(): string;
       copyFiles(paths: string[]): void;
     };
+
     drag: {
       startDrag(filePaths: string[]): Promise<void>;
     };
+
     shell: {
       beep(): Promise<void>;
       openExternal(url: string): Promise<void>;
       openPath(path: string): Promise<void>;
       showItemInFolder(path: string): Promise<void>;
     };
+
     log: {
       info(message: string): void;
       warn(message: string): void;
@@ -331,15 +333,20 @@ declare global {
   };
 
   interface Item {
-    // Instance methods
     save(): Promise<boolean>;
     moveToTrash(): Promise<boolean>;
     replaceFile(filePath: string): Promise<boolean>;
     refreshThumbnail(): Promise<boolean>;
     setCustomThumbnail(thumbnailPath: string): Promise<boolean>;
-    open(): Promise<void>;
+    addComment(commentData: ItemCommentInput): Promise<ItemComment>;
+    updateComment(
+      commentId: string,
+      updateData: ItemCommentUpdate
+    ): Promise<ItemComment>;
+    removeComment(commentId: string): Promise<boolean>;
+    open(options?: { window?: boolean }): Promise<void>;
+    select(): Promise<boolean>;
 
-    // Instance properties
     readonly id: string;
     name: string;
     readonly ext: string;
@@ -350,10 +357,12 @@ declare global {
     annotation: string;
     tags: string[];
     folders: string[];
-    readonly palettes: any[];
+    readonly palettes: object[];
+    readonly comments: ItemComment[];
     readonly size: number;
     star: number;
-    readonly importedAt: number;
+    importedAt: number;
+    readonly modifiedAt: number;
     readonly noThumbnail: boolean;
     readonly noPreview: boolean;
     readonly filePath: string;
@@ -364,51 +373,176 @@ declare global {
   }
 
   interface Folder {
-    // Instance methods
     save(): Promise<void>;
     open(): Promise<void>;
 
-    // Instance properties
     readonly id: string;
     name: string;
     description: string;
     readonly icon: string;
-    readonly iconColor: string;
+    iconColor: EagleIconColor;
     readonly createdAt: number;
+    parent: string | null;
     readonly children: Folder[];
   }
 
   interface TagGroup {
-    // Instance methods
     save(): Promise<TagGroup>;
     remove(): Promise<boolean>;
+    addTags(options: {
+      tags: string[];
+      removeFromSource?: boolean;
+    }): Promise<TagGroup>;
+    removeTags(options: { tags: string[] }): Promise<TagGroup>;
 
-    // Instance properties
     name: string;
-    color:
-      | 'red'
-      | 'orange'
-      | 'yellow'
-      | 'green'
-      | 'aqua'
-      | 'blue'
-      | 'purple'
-      | 'pink';
+    color: EagleIconColor | '';
+    description: string;
     tags: string[];
+  }
+
+  interface SmartFolder {
+    save(): Promise<SmartFolder>;
+    getItems(options?: {
+      orderBy?: string;
+      fields?: string[];
+    }): Promise<Item[]>;
+
+    readonly id: string;
+    name: string;
+    conditions: SmartFolderCondition[];
+    description: string;
+    readonly icon: string;
+    iconColor: EagleIconColor;
+    readonly modificationTime: number;
+    readonly children: SmartFolder[];
+    readonly parent: string;
+    readonly imageCount: number;
   }
 }
 
 interface Tag {
-  id: string;
+  save(): Promise<boolean>;
   name: string;
-  color?: string;
-  count?: number;
+  readonly count: number;
+  color: string;
+  readonly groups: string[];
+  readonly pinyin: string;
+}
+
+interface PluginContext {
+  manifest: PluginManifest;
+  path: string;
+}
+
+interface PluginManifest {
+  id?: string;
+  version?: string;
+  name?: string;
+  logo?: string;
+}
+
+interface ItemQueryOptions {
+  id?: string;
+  ids?: string[];
+  isSelected?: boolean;
+  isUntagged?: boolean;
+  isUnfiled?: boolean;
+  keywords?: string[];
+  tags?: string[];
+  folders?: string[];
+  ext?: string;
+  annotation?: string;
+  rating?: number;
+  url?: string;
+  shape?: ItemShape;
+  fields?: string[];
+}
+
+interface ItemAddOptions {
+  name?: string;
+  website?: string;
+  tags?: string[];
+  folders?: string[];
+  annotation?: string;
+}
+
+interface ItemBookmarkOptions {
+  name?: string;
+  base64?: string;
+  tags?: string[];
+  folders?: string[];
+  annotation?: string;
+}
+
+interface ItemCommentInput {
+  annotation?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  duration?: number;
+}
+
+interface ItemCommentUpdate {
+  annotation?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  duration?: number;
+}
+
+interface ItemComment {
+  id: string;
+  annotation?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  duration?: number;
+  lastModified?: number;
+}
+
+interface SmartFolderCondition {
+  match: SmartFolderMatch;
+  rules: SmartFolderRule[];
+  boolean?: SmartFolderBoolean;
+}
+
+interface SmartFolderRule {
+  property: string;
+  method: string;
+  value?: SmartFolderRuleValue;
+}
+
+interface SmartFolderRuleSchema {
+  methods: string[];
+  valueType: string;
+  options?: Array<string | number | boolean>;
+}
+
+interface MenuItem {
+  id: string;
+  label: string;
+  submenu?: MenuItem[];
+  click?: () => void;
+}
+
+interface FileFilter {
+  name: string;
+  extensions: string[];
 }
 
 interface LibraryInfo {
-  // This interface represents the detailed information about the library
-  // The exact structure will depend on what the API returns
-  [key: string]: any;
+  name?: string;
+  path?: string;
+  modificationTime?: number;
+  applicationVersion?: string;
+  folders?: Folder[];
+  smartFolders?: SmartFolder[];
+  quickAccess?: object[];
+  tagGroups?: TagGroup[];
 }
 
 interface Rectangle {
@@ -428,16 +562,23 @@ interface Point {
   y: number;
 }
 
-interface Display {
-  // This interface represents display information
-  // The exact structure will depend on what the API returns
-  [key: string]: any;
-}
+interface Display {}
 
 interface NativeImage {
   toDataURL(type: string): string;
   toPNG(): Buffer;
   getSize(): Size;
+}
+
+interface EagleIconColorMap {
+  readonly Red: 'red';
+  readonly Orange: 'orange';
+  readonly Yellow: 'yellow';
+  readonly Green: 'green';
+  readonly Aqua: 'aqua';
+  readonly Blue: 'blue';
+  readonly Purple: 'purple';
+  readonly Pink: 'pink';
 }
 
 type AppPath =
@@ -454,5 +595,4 @@ type AppPath =
   | 'videos'
   | 'recent';
 
-// This export is needed to make the file a module
 export {};
