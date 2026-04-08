@@ -86,6 +86,7 @@ export class PythonExecutorV2 extends BaseManager {
 
   /**
    * Gets plugin ID from script path by reading plugin.json
+   * Note: This is a synchronous method as it's called in contexts where async is not possible
    * @param scriptPath - Path to the Python script
    * @returns string | null - Plugin ID or null if not found
    */
@@ -98,6 +99,7 @@ export class PythonExecutorV2 extends BaseManager {
       const scriptDir = path.dirname(scriptPath);
       const pluginJsonPath = path.join(scriptDir, 'plugin.json');
       
+      // Use existsSync to avoid exception overhead
       if (fs.existsSync(pluginJsonPath)) {
         const pluginManifest = JSON.parse(fs.readFileSync(pluginJsonPath, 'utf8'));
         return pluginManifest.id || null;
@@ -185,11 +187,15 @@ export class PythonExecutorV2 extends BaseManager {
 
         let stdout = '';
         let stderr = '';
+        
+        // Use arrays for efficient string concatenation
+        const stdoutChunks: string[] = [];
+        const stderrChunks: string[] = [];
 
         // Collect stdout with optional custom handler
         pythonProcess.stdout.on('data', (data: Buffer) => {
           const output = data.toString();
-          stdout += output;
+          stdoutChunks.push(output);
           this.debugLog(`Python stdout: ${output.trim()}`);
           
           // Call custom stdout handler if provided
@@ -205,7 +211,7 @@ export class PythonExecutorV2 extends BaseManager {
         // Collect stderr with optional custom handler and callback filtering
         pythonProcess.stderr.on('data', (data: Buffer) => {
           const output = data.toString();
-          stderr += output;
+          stderrChunks.push(output);
           
           // Debug: Log all stderr data to see what we're receiving
           this.debugLog(`Raw Python stderr received: "${output.trim()}"`);
@@ -230,6 +236,10 @@ export class PythonExecutorV2 extends BaseManager {
         // Handle process completion
         pythonProcess.on('close', async (code: number) => {
           this.debugLog(`Python process exited with code: ${code}`);
+          
+          // Join chunks efficiently
+          stdout = stdoutChunks.join('');
+          stderr = stderrChunks.join('');
           
           // Filter callback signals from final stderr before resolving
           const filteredStderr = await this.filterCallbackSignals(stderr, scriptPath);

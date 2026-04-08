@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 import { ExtensionManager } from "./manager/manager";
 
@@ -190,11 +190,15 @@ function App() {
 
   const [filterText, setFilterText] = useState("");
 
-  const filteredExtensions = extensions.filter(ext =>
-    ext.name.toLowerCase().includes(filterText.toLowerCase()) ||
-    ext.id.toLowerCase().includes(filterText.toLowerCase()) ||
-    (ext.description && ext.description.toLowerCase().includes(filterText.toLowerCase()))
-  );
+  // Memoize filtered extensions to avoid recalculation on every render
+  const filteredExtensions = useMemo(() => {
+    const lowerFilter = filterText.toLowerCase();
+    return extensions.filter(ext =>
+      ext.name.toLowerCase().includes(lowerFilter) ||
+      ext.id.toLowerCase().includes(lowerFilter) ||
+      (ext.description && ext.description.toLowerCase().includes(lowerFilter))
+    );
+  }, [extensions, filterText]);
 
   return (
     <div
