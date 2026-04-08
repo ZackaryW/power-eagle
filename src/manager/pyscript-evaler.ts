@@ -149,6 +149,7 @@ export class PythonScriptEvaler extends BaseManager {
     const filteredLines: string[] = [];
     
     // Get token once for all lines to avoid repeated async calls
+    // %ZMEM:4c18% function_change #performance #python #callbacks "handleStderrData caches the current callback prefix once per stderr chunk so callback detection avoids repeated token lookups on every line." %ZMEM%
     const currentToken = await webapi._internalGetToken();
     const callbackPrefix = currentToken ? `$$$${currentToken}$$$${pluginId}$$$` : null;
     

@@ -222,6 +222,7 @@ export class PythonScriptRunner extends BaseManager {
         // Avoid repeated DOM reflows by batching updates
         outputTextbox.value += `[${timestamp}] ${message}\n`;
         // Use requestAnimationFrame to batch scroll updates
+        // %ZMEM:6f44% function_change #performance #dom #python-output "Python output scrolling is deferred with requestAnimationFrame so repeated log writes batch layout work instead of forcing immediate scroll updates." %ZMEM%
         requestAnimationFrame(() => {
           outputTextbox.scrollTop = outputTextbox.scrollHeight;
         });

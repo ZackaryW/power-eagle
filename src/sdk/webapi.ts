@@ -1,4 +1,6 @@
-// Eagle API client for HTTP requests to Eagle application
+// HTTP client for Eagle's web API.
+// This is separate from the host-provided global eagle runtime object.
+// %ZMEM:a9fd% decision #sdk #webapi #identity "webapi is the HTTP client identity for Eagle's web API and should remain conceptually separate from the host-provided eagle runtime." %ZMEM%
 interface EagleApiResponse<T = any> {
   data: T;
 }
@@ -11,12 +13,12 @@ interface ApplicationInfo {
   };
 }
 
-interface FolderCreateParams {
+export interface FolderCreateParams {
   folderName: string;
   parent?: string | null;
 }
 
-interface FolderRenameParams {
+export interface FolderRenameParams {
   folderId: string;
   newName: string;
 }
@@ -28,11 +30,11 @@ interface FolderUpdateParams {
   newColor?: string | null;
 }
 
-interface LibrarySwitchParams {
+export interface LibrarySwitchParams {
   libraryPath: string;
 }
 
-interface LibraryIconParams {
+export interface LibraryIconParams {
   libraryPath: string;
 }
 
@@ -44,11 +46,11 @@ interface ItemUpdateParams {
   star?: number | null;
 }
 
-interface ItemRefreshParams {
+export interface ItemRefreshParams {
   id: string;
 }
 
-interface ItemMoveToTrashParams {
+export interface ItemMoveToTrashParams {
   itemIds: string[];
 }
 
@@ -62,11 +64,11 @@ interface ItemListParams {
   folders?: string[] | null;
 }
 
-interface ItemThumbnailParams {
+export interface ItemThumbnailParams {
   id: string;
 }
 
-interface ItemInfoParams {
+export interface ItemInfoParams {
   id: string;
 }
 
@@ -428,4 +430,5 @@ class EagleApi {
   };
 }
 
+export type WebEagleApi = typeof EagleApi;
 export default EagleApi;

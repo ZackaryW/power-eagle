@@ -241,8 +241,6 @@ The Power Eagle SDK provides organized namespaces for better developer experienc
 ### Eagle API
 - `powersdk.webapi` - Eagle HTTP API wrapper
 
-For complete documentation, see [SDK Reference](./docs/sdk-reference.md) and [Usage Examples](./docs/usage-examples.md).
-
 ## Example Plugins
 
 This repository includes three example plugins demonstrating different SDK features:

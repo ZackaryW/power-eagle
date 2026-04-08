@@ -26,6 +26,7 @@ export class PluginLoader extends BaseManager {
       } else {
         // Use Node.js fs promises API for non-blocking I/O
         const fs = require('fs');
+        // %ZMEM:29af% function_change #performance #io #loader "loadPluginFile now uses fs.promises.readFile on the Node fallback path so plugin source loading avoids blocking synchronous filesystem reads." %ZMEM%
         const fileContent = await fs.promises.readFile(filePath, 'utf8');
         return fileContent;
       }

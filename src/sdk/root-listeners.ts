@@ -340,6 +340,7 @@ export class RootListeners extends BaseManager {
     if (keys1.length !== keys2.length) return false;
     
     // Create a Set for O(1) lookup instead of O(n) includes
+    // %ZMEM:e1a7% function_change #performance #algorithm #listeners "compareObjects now builds a Set from the second key list so shallow key comparison avoids repeated linear includes checks." %ZMEM%
     const keys2Set = new Set(keys2);
     
     for (const key of keys1) {

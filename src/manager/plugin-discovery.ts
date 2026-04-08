@@ -59,12 +59,13 @@ export class PluginDiscovery {
       id: pluginId,
       name: this.getPluginDisplayName(pluginId),
       description: this.getPluginDescription(pluginId),
-      type: 'standard', // Built-in plugins are standard type
+      // %ZMEM:61b2% known_issue #docs #manifest #type "Repository sources disagree on the JavaScript plugin manifest type; runtime defaults to standard while README and legacy memory still describe plugin." %ZMEM%
+      type: DEFAULT_PLUGIN_TYPE,
       manifest: {
         id: pluginId,
         name: this.getPluginDisplayName(pluginId),
         description: this.getPluginDescription(pluginId),
-        type: 'standard',
+        type: DEFAULT_PLUGIN_TYPE,
       },
     }));
 
@@ -115,7 +116,8 @@ export class PluginDiscovery {
         entry.isDirectory() || entry.isSymbolicLink());
       
       // Process plugins in parallel for better performance
-      const pluginPromises = pluginDirs.map(async (pluginDir) => {
+      // %ZMEM:9c02% function_change #performance #batching #discovery "scanInstalledPlugins switched from synchronous serial manifest loading to async fs.promises access plus parallel plugin manifest reads to reduce discovery latency." %ZMEM%
+      const pluginPromises = pluginDirs.map(async (pluginDir: { name: string }) => {
         try {
           const pluginPath = path.join(extensionsDir, pluginDir.name);
           const manifestPath = path.join(pluginPath, 'plugin.json');
@@ -139,7 +141,7 @@ export class PluginDiscovery {
               id: manifest.id,
               name: manifest.name,
               description: manifest.description,
-              type: manifest.type || 'standard', // Default to standard if no type specified
+              type: manifest.type || DEFAULT_PLUGIN_TYPE,
               path: pluginPath,
               manifest,
               isBuiltin: false,
@@ -210,13 +212,13 @@ export class PluginDiscovery {
         id: 'unknown-plugin',
         name: 'Unknown Plugin',
         description: 'A plugin that was downloaded but could not be properly identified',
-        type: 'standard',
+        type: DEFAULT_PLUGIN_TYPE,
         path: `${extensionsDir}/unknown-plugin`,
         manifest: {
           id: 'unknown-plugin',
           name: 'Unknown Plugin',
           description: 'A plugin that was downloaded but could not be properly identified',
-          type: 'standard',
+          type: DEFAULT_PLUGIN_TYPE,
         },
         isBuiltin: false,
       };

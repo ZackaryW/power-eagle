@@ -18,6 +18,18 @@ export * from './utils';
 
 // WebAPI export
 export { default as webapi } from './webapi';
+export type {
+  FolderCreateParams,
+  FolderRenameParams,
+  LibrarySwitchParams,
+  LibraryIconParams,
+  ItemRefreshParams,
+  ItemMoveToTrashParams,
+  ItemThumbnailParams,
+  ItemInfoParams,
+  WebEagleApi,
+} from './webapi';
+export type { HostEagleAPI, EagleAPI } from './types';
 
 // Root listeners export
 export { rootListeners } from './root-listeners';
@@ -38,6 +50,7 @@ export async function createPowerSDKContext(
   manifest?: any
 ) {
   // Use static imports instead of dynamic imports for better bundling
+  // %ZMEM:b3de% function_change #performance #sdk #bundling "createPowerSDKContext now assembles the powersdk from static imports instead of per-call dynamic imports to reduce context creation overhead and simplify bundling." %ZMEM%
   return {
     // Storage functionality
     storage,

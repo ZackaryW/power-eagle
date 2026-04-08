@@ -1,15 +1,15 @@
 // Plugin management utilities for Power Eagle SDK
 
-import { PluginManifest, PluginAPI, EagleAPI } from './types';
+import { PluginManifest, PluginAPI, HostEagleAPI } from './types';
 import { ButtonManager } from './visual/button';
 
 export class PluginManager {
   private plugins: Map<string, PluginManifest> = new Map();
   private buttonManager: ButtonManager;
-  private eagleAPI: EagleAPI;
+  private hostEagleApi: HostEagleAPI;
 
-  constructor(eagleAPI: EagleAPI) {
-    this.eagleAPI = eagleAPI;
+  constructor(hostEagleApi: HostEagleAPI) {
+    this.hostEagleApi = hostEagleApi;
     this.buttonManager = new ButtonManager();
   }
 
@@ -27,8 +27,10 @@ export class PluginManager {
         },
       };
 
-      // Execute the plugin function with global eagle object
-      pluginFunction(pluginAPI, eagle);
+      // Execute the plugin function with the host-provided Eagle runtime.
+      // This is distinct from the SDK webapi HTTP client.
+      // %ZMEM:8f31% function_change #sdk #api #identity "PluginManager now forwards the injected host Eagle runtime explicitly so plugin execution does not imply equivalence with the webapi client." %ZMEM%
+      pluginFunction(pluginAPI, this.hostEagleApi);
 
       console.log(`Plugin ${manifest.name} loaded successfully`);
     } catch (error) {

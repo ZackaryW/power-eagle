@@ -189,6 +189,7 @@ export class PythonExecutorV2 extends BaseManager {
         let stderr = '';
         
         // Use arrays for efficient string concatenation
+        // %ZMEM:77ac% function_change #performance #python #streaming "executeScript buffers stdout and stderr chunks in arrays and joins once on process close to avoid repeated string concatenation during streaming output." %ZMEM%
         const stdoutChunks: string[] = [];
         const stderrChunks: string[] = [];
 
