@@ -187,12 +187,12 @@ export function App(): JSX.Element {
   const hasInspectorContent = Boolean(launchedInstalled || hostEvents.length);
 
   return (
-    <main className="min-h-screen px-4 py-5 text-slate-950 md:px-6">
-      <section className="relative mx-auto flex min-h-[720px] max-w-7xl overflow-hidden rounded-[24px] border border-slate-200/80 bg-white/90 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur">
+    <main className="dark min-h-screen bg-background px-4 py-5 text-foreground md:px-6">
+      <section className="relative mx-auto flex min-h-[720px] max-w-7xl overflow-hidden rounded-[24px] border border-border/80 bg-card/95 shadow-[0_24px_70px_hsl(var(--foreground)/0.12)] backdrop-blur-xl">
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex items-center gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3 text-sm md:px-5">
-            <div className="text-sm font-semibold tracking-[-0.02em] text-slate-950">
-              power<span className="font-medium text-slate-500">eagle</span>
+          <header className="flex items-center gap-3 border-b border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground md:px-5">
+            <div className="text-sm font-semibold tracking-[-0.02em] text-foreground">
+              power<span className="font-medium text-muted-foreground">eagle</span>
               <span className="ml-2 align-middle"><Badge variant="outline" className="rounded-md px-2 py-0.5 text-[10px] font-medium">v2.0</Badge></span>
             </div>
             <Tabs className="ml-auto" onValueChange={(value) => setCurrentTab(value as HostTab)} value={currentTab}>
@@ -225,8 +225,8 @@ export function App(): JSX.Element {
             <Button disabled size="sm" variant="ghost">ai [soon]</Button>
           </header>
           <div className="flex min-h-0 flex-1">
-            <aside className="flex w-[248px] flex-shrink-0 flex-col border-r border-slate-200 bg-slate-50/70">
-              <div className="border-b border-slate-200 p-3">
+            <aside className="flex w-[248px] flex-shrink-0 flex-col border-r border-border bg-muted/25">
+              <div className="border-b border-border p-3">
                 <Input
                   className="w-full"
                   placeholder="filter installed..."
@@ -241,7 +241,7 @@ export function App(): JSX.Element {
                   return (
                     <button
                       key={plugin.id}
-                      className={`mb-1.5 flex w-full flex-col rounded-xl border px-3 py-3 text-left transition ${isSelected ? 'border-slate-200 bg-white shadow-sm' : isRunning ? 'border-slate-300 bg-white' : 'border-transparent hover:bg-white hover:shadow-sm'}`}
+                      className={`mb-1.5 flex w-full flex-col rounded-xl border px-3 py-3 text-left transition-colors ${isSelected ? 'border-border bg-card shadow-sm' : isRunning ? 'border-border/70 bg-card/80' : 'border-transparent hover:bg-card hover:shadow-sm'}`}
                       onClick={() => {
                         setSelectedInstalledId(plugin.id);
                         setCurrentTab('installed');
@@ -251,24 +251,24 @@ export function App(): JSX.Element {
                       }}
                       type="button"
                     >
-                      <span className="flex items-center gap-1.5 text-slate-900">
+                      <span className="flex items-center gap-1.5 text-foreground">
                         <span className="font-medium">{plugin.name}</span>
                         <Badge className="rounded-md px-2 py-0.5 text-[10px] font-medium" variant={plugin.source === 'local' ? 'default' : 'outline'}>
                           {plugin.source === 'local' ? 'local' : plugin.bucketId ?? '?'}
                         </Badge>
                         {isRunning ? <Badge className="rounded-md px-2 py-0.5 text-[10px] font-medium" variant="secondary">running</Badge> : null}
                       </span>
-                      <span className="mt-1 text-xs text-slate-500">{plugin.id} · v{plugin.version}</span>
-                      {!plugin.enabled ? <span className="mt-1 text-[10px] text-slate-400">[off]</span> : null}
-                      {!isRunning ? <span className="mt-1 text-[10px] text-slate-400">double-click to launch</span> : null}
+                      <span className="mt-1 text-xs text-muted-foreground">{plugin.id} · v{plugin.version}</span>
+                      {!plugin.enabled ? <span className="mt-1 text-[10px] text-muted-foreground/80">[off]</span> : null}
+                      {!isRunning ? <span className="mt-1 text-[10px] text-muted-foreground/80">double-click to launch</span> : null}
                     </button>
                   );
                 }) : (
-                  <div className="px-3 py-4 text-sm text-slate-500">{installedPlugins.length ? 'no match' : 'no plugins installed'}</div>
+                  <div className="px-3 py-4 text-sm text-muted-foreground">{installedPlugins.length ? 'no match' : 'no plugins installed'}</div>
                 )}
               </div>
             </aside>
-            <section className="min-w-0 flex-1 overflow-y-auto bg-slate-50/40">
+            <section className="min-w-0 flex-1 overflow-y-auto bg-background/70">
               {currentTab === 'installed' ? (
                 <InstalledView
                   selectedInstalled={selectedInstalled}
