@@ -1,289 +1,228 @@
 > for gitops workflows, refer to [template](https://github.com/eagle-cooler/template)
 
-# Power Eagle - Userscript Plugin System for Eagle
+# Power Eagle
 
-**Power Eagle** is a userscript-style plugin system for Eagle.cool that enables quick, lightweight scripting extensions. While Eagle.cool already has a robust extension system, Power Eagle provides a **userscript experience** for simple, single-file plugins that can be installed instantly from URLs.
+Power Eagle is a parser-first plugin host for Eagle built around a canonical `plugin.json` package format.
 
-Think of it like **Tampermonkey for Eagle** - paste a URL, get a working plugin in seconds. Perfect for quick automation, custom workflows, and community-shared utilities.
+The current system is not the older userscript-style `main.js` model. A plugin package is now defined by `plugin.json`, optional local action modules, and optional render templates. The host loads packages from disk-backed buckets, activates them through the v2 runtime, and exposes a small declarative grammar for UI, state, lifecycle hooks, and invocation tuples.
 
-## Why Power Eagle?
+## Current Model
 
-**Eagle's Native Extensions**: Full-featured extensions with complex development workflows  
-**Power Eagle**: Simple userscript-style plugins for quick tasks and community sharing
+- Canonical package contract: `plugin.json`
+- Canonical local storage model: `~/.powereagle/buckets/...`
+- Canonical file-creation helper: `file.createWithContent`
+- Supported invocation namespaces: `local`, `ext`, `eagle`
+- No legacy fallbacks for `plugin.js`, `ui.json`, `state.js`, or metadata-only package formats
 
-- 🚀 **Instant Installation**: Paste URL → Working plugin in seconds
-- 📝 **Simple Development**: Just `plugin.json` + `main.js/py` files  
-- 🔗 **Easy Sharing**: Share via GitHub releases or direct links
-- 🐍 **Multi-Language**: JavaScript for UI, Python for automation
-- 🔒 **Safe Execution**: Isolated contexts with Eagle API access
+If you are reading older docs or examples that mention `main.js`, userscript bootstrapping, or the previous SDK container model, they do not describe the current runtime.
 
-## Use Cases
+## Package Grammar
 
-- **Quick Utilities**: Simple tools like file creators, batch operations
-- **Automation Scripts**: Python scripts for Eagle library management  
-- **Community Sharing**: Easy distribution of helpful Eagle workflows
-- **Rapid Prototyping**: Test ideas without full extension development
-- **Personal Workflows**: Custom scripts tailored to your specific needs
+The runtime expects a package with a `plugin.json` manifest shaped like the v2 contract in [src/core/types/plugin.ts](src/core/types/plugin.ts).
 
-## Features
+Required top-level fields:
 
-- 🔌 **Instant Plugin Installation**: Download and install from URLs
-- 🎨 **Rich UI Support**: SDK for complex interfaces with organized namespaces
-- 🔒 **Isolated Execution**: Safe plugin contexts with prefixed storage
-- 📦 **System Integration**: Native zip extraction using OS APIs
-- 🎯 **Simple Development**: Just `plugin.json` + script files
-- 🏗️ **Organized SDK**: Structured namespaces (`powersdk.visual`, `powersdk.utils`, `powersdk.storage`)
-- 🐍 **Multi-Language Support**: JavaScript for UI, Python for automation
-- � **Python Callbacks**: Bidirectional Python ↔ Eagle communication via [py-eagle-cooler](https://github.com/eagle-cooler/py-eagle-cooler)
-- �🔄 **Auto-Overwrite**: Smart plugin updates (same ID = automatic replacement)
+- `id`
+- `name`
+- `version`
+- `stateVersion`
+- `type`
+- `ui`
 
-## Plugin Types
+Optional top-level fields used by the runtime:
 
-### 1. JavaScript Plugins (`"type": "plugin"`)
-Traditional userscript plugins with full SDK access and isolated execution contexts.
+- `description`
+- `keywords`
+- `state.initial`
+- `state.slots`
+- `lifecycle.onMount`
 
-### 2. Python Scripts (`"type": "python-script"`)
-Python scripts that receive Eagle context via environment variables and can **call back to Eagle API** using the [py-eagle-cooler](https://github.com/eagle-cooler/py-eagle-cooler) library for full bidirectional communication.
+### UI Nodes
 
-## Quick Start
+The `ui` payload is a declarative tree. Common node shapes in the current runtime include:
 
-### JavaScript Plugin Structure
+- `container`
+- `header`
+- `row`
+- `input`
+- `button`
+- `card-list`
+- `card`
+- `text`
+- `badge`
 
-```
-my-plugin/
-├── plugin.json          # Plugin manifest
-└── main.js             # Plugin implementation
-```
+### Invocation Tuples
 
-### Python Script Structure
+Buttons, inputs, and lifecycle hooks call into the runtime with tuples of the form:
 
-```
-my-python-plugin/
-├── plugin.json          # Plugin manifest
-└── main.py             # Python script
+```json
+["namespace", "key", ["optional", "args"], { "optional": "kwargs" }]
 ```
 
-### JavaScript Plugin Example
+Namespaces:
 
-```javascript
-// main.js
-const plugin = async (context) => {
-  const { eagle, powersdk } = context;
-  
-  // Use organized namespaces
-  const cardManager = new powersdk.visual.CardManager(powersdk.container);
-  
-  cardManager.addCardToContainer({
-    title: 'My Plugin',
-    content: '<p>Hello from my plugin!</p>',
-    actions: [
+- `local`: package-owned modules such as `actions/createFile`
+- `ext`: shared built-in helpers such as `file.createWithContent`
+- `eagle`: host Eagle surfaces exposed through the runtime bridge
+
+Tuple strings support interpolation such as `{{state.fileName}}`, `{{input}}`, and `{{args.0}}`.
+
+## Example Packages
+
+### Minimal Declarative Example
+
+[examples/simple-create-md/plugin.json](examples/simple-create-md/plugin.json) is the smallest current example of the grammar. It uses one input, one button, and a direct call to the shared file creation preset:
+
+```json
+{
+  "id": "simple-create-md",
+  "name": "Simple Create Markdown",
+  "version": "1.0.0",
+  "stateVersion": 1,
+  "type": "button",
+  "state": {
+    "initial": {
+      "fileName": ""
+    }
+  },
+  "ui": {
+    "layout": "container",
+    "children": [
       {
-        text: 'Count Files',
-        onClick: async () => {
-          const files = await eagle.item.getSelected();
-          powersdk.storage.set('count', files.length);
-          await eagle.notification.show({
-            title: 'File Count',
-            description: `Found ${files.length} files`
-          });
-        }
+        "type": "row",
+        "children": [
+          {
+            "type": "input",
+            "slot": "fileName",
+            "placeholder": "File name",
+            "flex": 1
+          },
+          {
+            "type": "button",
+            "text": "Create File",
+            "variant": "primary",
+            "onClick": ["ext", "file.createWithContent", [], {
+              "fileName": "{{state.fileName}}",
+              "extension": "md",
+              "content": "# {{state.fileName}}\n\n"
+            }]
+          }
+        ]
       }
     ]
-  });
-};
-```
-
-### Python Script Example
-
-```python
-# main.py
-import os
-import json
-from eagle_cooler.callback import EagleCallback
-
-# Get Eagle context from environment variable
-context_json = os.environ.get('POWEREAGLE_CONTEXT', '{}')
-context = json.loads(context_json)
-
-# Access Eagle data
-selected_folders = context.get('folders', [])
-selected_items = context.get('items', [])
-library_info = context.get('info', {})
-
-print(f"Library: {library_info.get('name', 'Unknown')}")
-print(f"Selected folders: {len(selected_folders)}")
-print(f"Selected items: {len(selected_items)}")
-
-# 🚀 REVOLUTIONARY: Call back to Eagle API directly from Python!
-if selected_folders:
-    folder_name = selected_folders[0]['name']
-    
-    # Create a new folder
-    EagleCallback.folder.create(name=f"Processed_{folder_name}", parent=None)
-    
-    # Show notification
-    EagleCallback.notification.show(
-        title="Python Callback Success!",
-        description=f"Created folder for {folder_name}"
-    )
-    
-    # Add tags to selected items
-    for item in selected_items:
-        EagleCallback.item.update_tags(
-            item_id=item['id'], 
-            tags=["python-processed", "automated"]
-        )
-
-print("✅ Python script completed with Eagle API callbacks!")
-```
-
-### Plugin Manifests
-
-#### JavaScript Plugin
-```json
-{
-  "id": "my-plugin",
-  "name": "My Plugin",
-  "description": "A helpful description of what this plugin does",
-  "type": "plugin"
+  }
 }
 ```
 
-#### Python Script Plugin
-```json
-{
-  "id": "my-python-script",
-  "name": "My Python Script",
-  "description": "A Python script that processes Eagle data",
-  "type": "python-script",
-  "on": ["onStart"]
-}
-```
+This example is intentionally JSON-only:
 
-> **Note**: Python scripts with `"on": ["onStart"]` auto-execute when the plugin loads. Scripts without this will show manual Execute/Clear controls.
+- one name input
+- fixed `md` extension
+- fixed markdown content
+- no extension cache
+- no local action modules
 
-## 🚀 Python Callbacks - Revolutionary Feature
+### Richer Package With Local Actions
 
-Power Eagle includes a **groundbreaking callback system** that allows Python scripts to directly call Eagle API methods, creating true bidirectional communication between Python and Eagle.
+[src/fixtures/file-creator/file-creator/plugin.json](src/fixtures/file-creator/file-creator/plugin.json) shows the richer pattern:
 
-### Installation
+- local actions under `actions/`
+- render templates under `render/`
+- lifecycle hooks such as `onMount`
+- stateful behavior such as saved extension lists
 
-```bash
-pip install eagle-cooler
-```
+Use that shape when the plugin has real package-owned logic above the shared helpers.
 
-### How It Works
+### Fixture Packages Included In The Repo
 
-Python scripts send callback signals via stderr that Power Eagle intercepts and executes as Eagle API calls:
+- [examples/simple-create-md/plugin.json](examples/simple-create-md/plugin.json)
+- [src/fixtures/file-creator/file-creator/plugin.json](src/fixtures/file-creator/file-creator/plugin.json)
+- [src/fixtures/recent-libraries/recent-libraries/plugin.json](src/fixtures/recent-libraries/recent-libraries/plugin.json)
 
-```python
-from eagle_cooler.callback import EagleCallback
+## File Creation Flow
 
-# Direct Eagle API calls from Python!
-EagleCallback.folder.create(name="My New Folder", parent=None)
-EagleCallback.notification.show(title="Hello", description="From Python!")
-EagleCallback.item.update_tags(item_id="some-id", tags=["new-tag"])
-```
+The current shared file-creation helper is `file.createWithContent`.
 
-### Key Features
+Its job is not to show a save dialog and write directly to an arbitrary path. The canonical Eagle-side flow is:
 
-- **🔒 Secure**: Token-based authentication prevents unauthorized access
-- **🧹 Clean Output**: Callback signals are filtered from Python output automatically
-- **⚡ Real-time**: Callbacks execute immediately during Python script execution
-- **🔄 Bidirectional**: Full Python ↔ Eagle communication
-- **📚 Easy to Use**: Simple library installation and intuitive API
+1. Resolve the effective file name and extension.
+2. Determine the default content.
+3. Write the file to a temporary path.
+4. Call Eagle `item.addFromPath(...)` to import it into the active library.
+5. Show a notification.
 
-### Example Use Cases
+That shared helper is implemented in [src/core/ext/presets.ts](src/core/ext/presets.ts).
 
-```python
-# Batch organize files
-for item in selected_items:
-    if item['ext'] == 'jpg':
-        EagleCallback.folder.create(name="Photos", parent=None)
-        EagleCallback.item.move_to_folder(item_id=item['id'], folder_name="Photos")
+Use plugin-owned local actions only when the plugin needs to decide additional behavior before delegating to the shared helper. `file-creator` does that because it owns extension normalization and extension-list persistence. `simple-create-md` does not, so it stays declarative.
 
-# Smart tagging based on analysis
-if analysis_result['confidence'] > 0.8:
-    EagleCallback.item.update_tags(
-        item_id=item['id'], 
-        tags=[analysis_result['category'], "ai-processed"]
-    )
+## Storage And Install Layout
 
-# Progress notifications
-EagleCallback.notification.show(
-    title="Processing Complete", 
-    description=f"Processed {len(items)} items successfully"
-)
-```
+The current host uses a filesystem-backed store under `~/.powereagle`.
 
-For complete documentation, see the **[py-eagle-cooler repository](https://github.com/eagle-cooler/py-eagle-cooler)**.
+Relevant paths:
 
-## SDK Reference
+- local bundled bucket: `~/.powereagle/buckets/local/plugins/<plugin-id>`
+- cloned bucket packages: `~/.powereagle/buckets/<bucket-id>/plugins/<plugin-id>`
+- persisted installed state: `~/.powereagle/...` host state files managed by the install store
 
-The Power Eagle SDK provides organized namespaces for better developer experience:
-
-### Core Functionality
-- `powersdk.storage` - Isolated localStorage with plugin-specific prefixes
-- `powersdk.container` - Plugin's DOM container
-- `powersdk.pluginId` - Unique plugin identifier
-
-### Visual Components
-- `powersdk.visual.Button` - Enhanced button component
-- `powersdk.visual.CardManager` - Rich card UI system
-- `powersdk.visual.Dialog` - Modal dialog component
-
-### Utility Functions
-- `powersdk.utils.files` - File operations (`createFile`, `extractZip`, `formatBytes`)
-- `powersdk.utils.paths` - Path utilities (`getDownloadPath`, `getExtensionsPath`)
-- `powersdk.utils.dom` - DOM utilities (`createElement`, `copyToClipboard`)
-- `powersdk.utils.common` - Common utilities (`debounce`, `throttle`, `generateId`)
-
-### Eagle API
-- `powersdk.webapi` - Eagle HTTP API wrapper
-
-## Example Plugins
-
-This repository includes three example plugins demonstrating different SDK features:
-
-- **[Basic Plugin](./src/examples/basic-plugin.tsx)** - SDK demonstrations (Eagle API, CardManager, Storage)
-- **[Recent Libraries](./src/examples/recent-libraries.tsx)** - Complex UI with search, filtering, library management
-- **[File Creator](./src/examples/file-creator.tsx)** - Dynamic file creation with extension management
-
-## Tech Stack
-
-- **Frontend**: React + TypeScript + Vite
-- **Styling**: TailwindCSS + DaisyUI
-- **Backend**: Eagle.cool Extension Framework
-- **File System**: Node.js fs/path modules
+Bundled fixture packages are converted into generated seed modules under [src/app/seeds](src/app/seeds). Those generated files come from the fixture packages under [src/fixtures](src/fixtures) through [scripts/generate-seeds.mjs](scripts/generate-seeds.mjs).
 
 ## Development
 
-1. Clone and install dependencies:
-   ```bash
-   git clone <repository>
-   cd power-eagle2
-   npm install
-   ```
+Install dependencies:
 
-2. Start development server:
-   ```bash
-   npm run dev
-   ```
+```bash
+pnpm install
+```
 
-3. Build for production:
-   ```bash
-   npm run build
-   ```
+Run the dev shell:
 
-## Plugin Installation
+```bash
+pnpm dev
+```
 
-1. **Create Plugin**: Create folder with `plugin.json` and `main.js`
-2. **Zip Plugin**: Package your plugin folder as a `.zip` file
-3. **Upload**: Host the zip file on any public URL
-4. **Install**: Use Power Eagle to download from the URL
+Run the build:
 
-Plugins are installed to `~user/.powereagle/extensions/{pluginId}/`
+```bash
+pnpm build
+```
+
+Run tests:
+
+```bash
+pnpm test
+```
+
+Run typechecking only:
+
+```bash
+pnpm typecheck
+```
+
+Regenerate bundled seed modules from fixture packages:
+
+```bash
+pnpm generate:seeds
+```
+
+## Hook Workflow
+
+The repository uses a generated-seed workflow:
+
+- `pre-commit`: regenerate and stage [src/app/seeds](src/app/seeds)
+- `pre-push`: run the full build
+
+See [lefthook.yaml](lefthook.yaml) for the current hook configuration.
 
 ## Contributing
 
-See example plugins in `src/examples/` for implementation patterns. All plugins use the universal `plugin(context)` signature and organized SDK namespaces.
+When adding or updating packages:
+
+- keep the package contract in `plugin.json`
+- do not add legacy `plugin.js` or `ui.json` fallbacks
+- prefer declarative UI and tuples first
+- use local actions only when the package owns real behavior
+- keep shared host integration inside the ext and eagle runtime layers
+- regenerate seeds after changing bundled fixtures
+
+The best current references are the checked-in packages and runtime code, not the older userscript documentation.
