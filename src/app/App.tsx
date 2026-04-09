@@ -67,6 +67,14 @@ export function App(): JSX.Element {
   }, []);
 
   useEffect(() => {
+    document.documentElement.classList.add('dark');
+
+    return () => {
+      document.documentElement.classList.remove('dark');
+    };
+  }, []);
+
+  useEffect(() => {
     saveJsonStorage(BUCKETS_STORAGE_KEY, bucketRecords);
   }, [bucketRecords]);
 
@@ -187,7 +195,7 @@ export function App(): JSX.Element {
   const hasInspectorContent = Boolean(launchedInstalled || hostEvents.length);
 
   return (
-    <main className="dark min-h-screen bg-background px-4 py-5 text-foreground md:px-6">
+    <main className="min-h-screen bg-background px-4 py-5 text-foreground md:px-6">
       <section className="relative mx-auto flex min-h-[720px] max-w-7xl overflow-hidden rounded-[24px] border border-border/80 bg-card/95 shadow-[0_24px_70px_hsl(var(--foreground)/0.12)] backdrop-blur-xl">
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="flex items-center gap-3 border-b border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground md:px-5">

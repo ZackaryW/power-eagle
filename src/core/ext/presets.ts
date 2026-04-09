@@ -158,18 +158,9 @@ function createFileCreateWithContentPreset(): (peagle: unknown, args?: unknown[]
     }
 
     const extension = normalizeDocumentExtension(kwargs.extension);
-    const saveResult = await runtime.eagle.plugin.invokeFunc('dialog.showSaveDialog', [{
-      title: typeof kwargs.title === 'string' ? kwargs.title : 'Create File',
-      defaultPath: `${fileStem}.${extension}`,
-      buttonLabel: typeof kwargs.buttonLabel === 'string' ? kwargs.buttonLabel : 'Create',
-    }], {});
-
-    if (!isRecord(saveResult) || saveResult.canceled === true || typeof saveResult.filePath !== 'string') {
-      return false;
-    }
-
     const content = buildDocumentContent(fileStem, kwargs);
-    await runtime.eagle.util.invokeFunc('writeTextFile', [saveResult.filePath, content], {});
+    const tempFilePath = await writeDocumentToTemporaryPath(runtime, fileStem, extension, content);
+    await importTemporaryDocument(runtime, tempFilePath, fileStem, kwargs);
 
     if (kwargs.notify !== false) {
       await showNotification(runtime, {
@@ -180,6 +171,82 @@ function createFileCreateWithContentPreset(): (peagle: unknown, args?: unknown[]
 
     return true;
   };
+}
+
+/**
+ * Write one document into the Eagle temp directory before library import.
+ */
+async function writeDocumentToTemporaryPath(
+  runtime: PeagleRuntime,
+  fileStem: string,
+  extension: string,
+  content: string,
+): Promise<string> {
+  const tempDir = await resolveTemporaryDirectory(runtime);
+  const tempFilePath = joinPathSegments(tempDir, buildTemporaryFileName(fileStem, extension));
+  await runtime.eagle.util.invokeFunc('writeTextFile', [tempFilePath, content], {});
+  return tempFilePath;
+}
+
+/**
+ * Import one temporary document into the current Eagle library.
+ */
+async function importTemporaryDocument(
+  runtime: PeagleRuntime,
+  tempFilePath: string,
+  fileStem: string,
+  kwargs: Record<string, unknown>,
+): Promise<unknown> {
+  const itemOptions = buildImportedItemOptions(fileStem, kwargs);
+  return runtime.eagle.plugin.invokeFunc('item.addFromPath', [tempFilePath, itemOptions], {});
+}
+
+/**
+ * Resolve the host temporary directory for file creation flows.
+ */
+async function resolveTemporaryDirectory(runtime: PeagleRuntime): Promise<string> {
+  const tempDir = await runtime.eagle.plugin.invokeFunc('os.tmpdir', [], {});
+  if (typeof tempDir !== 'string' || !tempDir.trim()) {
+    throw new Error('file.createWithContent requires Eagle os.tmpdir().');
+  }
+
+  return trimTrailingSeparator(tempDir.trim());
+}
+
+/**
+ * Build one unique temporary file name from a stem and extension.
+ */
+function buildTemporaryFileName(fileStem: string, extension: string): string {
+  const safeStem = sanitizeTempFileStem(fileStem);
+  const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return `${safeStem}-${uniqueSuffix}.${extension}`;
+}
+
+/**
+ * Build Eagle item import options from declarative kwargs.
+ */
+function buildImportedItemOptions(fileStem: string, kwargs: Record<string, unknown>): Record<string, unknown> {
+  const options: Record<string, unknown> = {
+    name: typeof kwargs.itemName === 'string' ? kwargs.itemName : fileStem,
+  };
+
+  if (Array.isArray(kwargs.tags)) {
+    options.tags = kwargs.tags.filter((tag): tag is string => typeof tag === 'string');
+  }
+
+  if (Array.isArray(kwargs.folders)) {
+    options.folders = kwargs.folders.filter((folder): folder is string => typeof folder === 'string');
+  }
+
+  if (typeof kwargs.annotation === 'string') {
+    options.annotation = kwargs.annotation;
+  }
+
+  if (typeof kwargs.website === 'string') {
+    options.website = kwargs.website;
+  }
+
+  return options;
 }
 
 /**
@@ -249,6 +316,29 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function normalizeDocumentExtension(extension: unknown): string {
   const normalized = typeof extension === 'string' ? extension.trim().replace(/^\.+/u, '').toLowerCase() : '';
   return normalized || 'txt';
+}
+
+/**
+ * Sanitize one file stem for use in a temporary file path.
+ */
+function sanitizeTempFileStem(fileStem: string): string {
+  const sanitized = fileStem.trim().replace(/[<>:"/\\|?*\x00-\x1F]+/gu, '-').replace(/\s+/gu, '-');
+  return sanitized || 'untitled';
+}
+
+/**
+ * Join path segments without depending on host path helpers in the preset layer.
+ */
+function joinPathSegments(basePath: string, ...segments: string[]): string {
+  const separator = basePath.includes('\\') ? '\\' : '/';
+  return [trimTrailingSeparator(basePath), ...segments.map((segment) => segment.replace(/^[\\/]+/u, ''))].join(separator);
+}
+
+/**
+ * Remove trailing separators from one path string.
+ */
+function trimTrailingSeparator(targetPath: string): string {
+  return targetPath.replace(/[\\/]+$/u, '');
 }
 
 /**

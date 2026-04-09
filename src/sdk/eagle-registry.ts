@@ -82,7 +82,7 @@ function registerNestedMethods(registry: EagleInvocationRegistry, prefix: string
   for (const [key, value] of Object.entries(source)) {
     const nextPath = `${prefix}.${key}`;
     if (typeof value === 'function') {
-      registry.set(nextPath, value as EagleCallable);
+      registry.set(nextPath, (value as EagleCallable).bind(source));
       continue;
     }
 

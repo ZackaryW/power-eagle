@@ -37,6 +37,33 @@ export function createHostEagle(
       async addTags(): Promise<void> {
         return undefined;
       },
+      async addFromPath(filePath: string, options?: { name?: string }): Promise<string> {
+        const hostAddFromPath = resolveHostAddFromPath();
+        if (hostAddFromPath) {
+          return hostAddFromPath(filePath, options);
+        }
+
+        setHostEvents((events) => [
+          {
+            id: Date.now() + events.length,
+            title: 'Imported File',
+            description: `Imported ${options?.name ?? filePath}`,
+          },
+          ...events,
+        ].slice(0, 10));
+
+        return filePath;
+      },
+    },
+    os: {
+      tmpdir(): string {
+        const hostTmpdir = resolveHostTmpdir();
+        if (hostTmpdir) {
+          return hostTmpdir();
+        }
+
+        return resolveRuntimeTempDir();
+      },
     },
     dialog: {
       async showSaveDialog(options: { defaultPath?: string }): Promise<{ canceled: boolean; filePath?: string }> {
@@ -63,11 +90,62 @@ export function createHostEagle(
 }
 
 /**
+ * Resolve Eagle's native item.addFromPath method when running inside Eagle.
+ */
+function resolveHostAddFromPath(): ((filePath: string, options?: { name?: string }) => Promise<string>) | null {
+  if (typeof eagle !== 'undefined' && typeof eagle.item?.addFromPath === 'function') {
+    return eagle.item.addFromPath.bind(eagle.item);
+  }
+
+  return null;
+}
+
+/**
+ * Resolve Eagle's native temporary directory helper when running inside Eagle.
+ */
+function resolveHostTmpdir(): (() => string) | null {
+  if (typeof eagle !== 'undefined' && typeof eagle.os?.tmpdir === 'function') {
+    return eagle.os.tmpdir.bind(eagle.os);
+  }
+
+  return null;
+}
+
+/**
+ * Resolve a runtime temporary directory for the preview shell fallback.
+ */
+function resolveRuntimeTempDir(): string {
+  const runtimeRequire = resolveRuntimeRequire();
+  if (runtimeRequire) {
+    const osModule = runtimeRequire('os') as { tmpdir(): string };
+    return osModule.tmpdir();
+  }
+
+  throw new Error('No temporary directory is available from Eagle or the runtime host.');
+}
+
+/**
+ * Resolve runtime require when the preview shell exposes CommonJS access.
+ */
+function resolveRuntimeRequire(): ((moduleName: string) => unknown) | null {
+  const runtimeWindow = typeof window !== 'undefined' ? window as Window & { require?: (moduleName: string) => unknown } : null;
+  if (runtimeWindow?.require) {
+    return runtimeWindow.require;
+  }
+
+  try {
+    return Function('return typeof require !== "undefined" ? require : null')() as ((moduleName: string) => unknown) | null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Resolve the native Eagle save dialog when the shell is running inside Eagle.
  */
 function resolveHostSaveDialog(): ((options: { defaultPath?: string }) => Promise<{ canceled: boolean; filePath?: string }>) | null {
   if (typeof eagle !== 'undefined' && typeof eagle.dialog?.showSaveDialog === 'function') {
-    return eagle.dialog.showSaveDialog;
+    return eagle.dialog.showSaveDialog.bind(eagle.dialog);
   }
 
   return null;
@@ -116,17 +194,17 @@ export function PluginWindow({
   syncPluginView,
 }: PluginWindowProps): JSX.Element {
   return (
-    <div className="flex min-h-full flex-col text-slate-900">
-      <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50/80 px-5 py-4">
+    <div className="flex min-h-full flex-col text-foreground">
+      <div className="flex items-center gap-3 border-b border-border bg-muted/40 px-5 py-4">
         <div className="flex flex-col">
-          <div className="text-sm font-semibold text-slate-950">{plugin.name}</div>
-          <div className="text-xs text-slate-500">{plugin.id} · v{plugin.version} · {plugin.source === 'local' ? 'local' : plugin.bucketId ?? plugin.source}</div>
+          <div className="text-sm font-semibold text-foreground">{plugin.name}</div>
+          <div className="text-xs text-muted-foreground">{plugin.id} · v{plugin.version} · {plugin.source === 'local' ? 'local' : plugin.bucketId ?? plugin.source}</div>
         </div>
         <Badge className="rounded-md" variant="outline">live</Badge>
         <ShellButton className="ml-auto" label="close" onClick={onClosePlugin} />
       </div>
       <div className="flex-1 p-4 md:p-5">
-        <section className="min-h-full min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="min-h-full min-w-0 rounded-2xl border border-border bg-card p-5 shadow-sm">
           {activatedPlugin ? (
             renderUiNode(activatedPlugin.parsed.ui, activatedPlugin, syncPluginView)
           ) : (
@@ -157,8 +235,8 @@ export function renderUiNode(node: UiNode, activated: ActivatedPlugin, syncView:
   if (nodeKind === 'header') {
     return (
       <header className="space-y-1.5">
-        <h2 className="text-xl font-semibold tracking-[-0.02em] text-slate-950">{String(node.title ?? '')}</h2>
-        <p className="text-sm leading-6 text-slate-500">{String(node.subtitle ?? '')}</p>
+        <h2 className="text-xl font-semibold tracking-[-0.02em] text-foreground">{String(node.title ?? '')}</h2>
+        <p className="text-sm leading-6 text-muted-foreground">{String(node.subtitle ?? '')}</p>
       </header>
     );
   }
@@ -186,7 +264,7 @@ export function renderUiNode(node: UiNode, activated: ActivatedPlugin, syncView:
 
     if (!renderedItems.length) {
       return (
-        <section className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+        <section className="rounded-xl border border-dashed border-border bg-muted/35 p-8 text-center text-sm text-muted-foreground">
           {String(node.empty ?? 'Nothing to show')}
         </section>
       );
@@ -203,11 +281,11 @@ export function renderUiNode(node: UiNode, activated: ActivatedPlugin, syncView:
 
   if (nodeKind === 'card') {
     return (
-      <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <article className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-col gap-3">
           <div>
-            <h3 className="text-sm font-semibold text-slate-950">{String(node.title ?? '')}</h3>
-            {node.subtitle ? <p className="mt-1 text-xs leading-5 text-slate-500">{String(node.subtitle)}</p> : null}
+            <h3 className="text-sm font-semibold text-foreground">{String(node.title ?? '')}</h3>
+            {node.subtitle ? <p className="mt-1 text-xs leading-5 text-muted-foreground">{String(node.subtitle)}</p> : null}
           </div>
           {typeof node.content === 'object' && node.content !== null && !Array.isArray(node.content) ? renderUiNode(node.content as UiNode, activated, syncView) : null}
           {Array.isArray(node.actions) ? (
@@ -223,14 +301,14 @@ export function renderUiNode(node: UiNode, activated: ActivatedPlugin, syncView:
   }
 
   if (nodeKind === 'text') {
-    return <p className="text-sm leading-6 text-slate-600">{String(node.value ?? '')}</p>;
+    return <p className="text-sm leading-6 text-muted-foreground">{String(node.value ?? '')}</p>;
   }
 
   if (nodeKind === 'badge') {
     return <Badge className={`rounded-md px-2.5 py-1 text-[10px] font-medium ${badgeClassName(String(node.variant ?? 'neutral'))}`}>{String(node.text ?? '')}</Badge>;
   }
 
-  return <div className="text-sm text-slate-500">Unsupported node: {String(nodeKind ?? node.type ?? node.layout ?? 'unknown')}</div>;
+  return <div className="text-sm text-muted-foreground">Unsupported node: {String(nodeKind ?? node.type ?? node.layout ?? 'unknown')}</div>;
 }
 
 /**
@@ -319,14 +397,14 @@ function ActionButton({ node, activated, syncView }: { node: UiNode; activated: 
  */
 function badgeClassName(variant: string): string {
   if (variant === 'success') {
-    return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    return 'border-emerald-500/30 bg-emerald-500/15 text-emerald-200';
   }
 
   if (variant === 'error') {
-    return 'border-red-200 bg-red-50 text-red-700';
+    return 'border-red-500/30 bg-red-500/15 text-red-200';
   }
 
-  return 'border-slate-200 bg-slate-100 text-slate-700';
+  return 'border-border bg-secondary text-secondary-foreground';
 }
 
 /**
@@ -334,16 +412,16 @@ function badgeClassName(variant: string): string {
  */
 function buttonClassName(variant: string): string {
   if (variant === 'secondary') {
-    return 'border-slate-200 bg-white text-slate-900 hover:bg-slate-50';
+    return 'border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground';
   }
 
   if (variant === 'warning') {
-    return 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100';
+    return 'border-amber-500/30 bg-amber-500/15 text-amber-200 hover:bg-amber-500/25';
   }
 
   if (variant === 'error') {
-    return 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100';
+    return 'border-red-500/30 bg-red-500/15 text-red-200 hover:bg-red-500/25';
   }
 
-  return 'border-slate-900 bg-slate-900 text-white hover:bg-slate-800';
+  return 'border-primary bg-primary text-primary-foreground hover:bg-primary/90';
 }

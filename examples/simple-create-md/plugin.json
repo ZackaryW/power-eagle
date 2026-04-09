@@ -24,6 +24,14 @@
         "children": [
           {
             "type": "input",
+            "slot": "fileName",
+            "placeholder": "File name",
+            "flex": 1
+          },
+          {
+            "type": "button",
+            "text": "Create File",
+            "variant": "primary",
             "onClick": ["ext", "file.createWithContent", [], {
               "fileName": "{{state.fileName}}",
               "extension": "md",
@@ -35,9 +43,9 @@
               "successBody": "Created {{state.fileName}}.md",
               "content": "# {{state.fileName}}\n\n"
             }]
-            "placeholder": "File name",
-            "flex": 1
-          },
-          {
-            "type": "button",
-            "text": "Create File",
+          }
+        ]
+      }
+    ]
+  }
+}

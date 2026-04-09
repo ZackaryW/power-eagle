@@ -30,6 +30,22 @@ describe('sdk eagle registry', () => {
     }, {});
   });
 
+  it('binds host methods to their owning namespace object', async () => {
+    const hostEagle: HostEagleRuntime = {
+      item: {
+        prefix: 'item:',
+        async addFromPath(this: { prefix: string }, filePath: string) {
+          return `${this.prefix}${filePath}`;
+        },
+      },
+    };
+
+    const pluginRegistry = createPluginEagleInvocationRegistry(hostEagle);
+    const result = await invokeEaglePath(pluginRegistry, 'item.addFromPath', ['C:/Temp/note.md'], {});
+
+    expect(result).toBe('item:C:/Temp/note.md');
+  });
+
   it('falls back to the old webapi surface for library.switch in the web registry when the host runtime does not expose it', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({

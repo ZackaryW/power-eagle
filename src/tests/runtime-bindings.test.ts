@@ -19,12 +19,13 @@ function createHostEagleStub(overrides: Partial<HostEagleRuntime> = {}): HostEag
     item: {
       getSelected: async () => [],
       addTags: async () => undefined,
+      addFromPath: async () => 'item-id',
     },
     app: {
       getPath: async () => 'C:/Users/Zackary/AppData/Roaming',
     },
-    dialog: {
-      showSaveDialog: async () => ({ canceled: true }),
+    os: {
+      tmpdir: () => 'C:/Temp',
     },
     ...overrides,
   };
@@ -94,6 +95,7 @@ describe('runtime bindings', () => {
   it('creates text files through the shared file.createWithContent ext preset', async () => {
     const mkdirMock = vi.fn().mockResolvedValue(undefined);
     const writeFileMock = vi.fn().mockResolvedValue(undefined);
+    const addFromPathMock = vi.fn().mockResolvedValue('imported-item');
     const originalWindow = globalThis.window;
 
     Object.defineProperty(globalThis, 'window', {
@@ -114,6 +116,12 @@ describe('runtime bindings', () => {
             };
           }
 
+          if (moduleName === 'os') {
+            return {
+              tmpdir: () => 'C:/Temp',
+            };
+          }
+
           throw new Error(`Unexpected module request: ${moduleName}`);
         },
       },
@@ -125,8 +133,10 @@ describe('runtime bindings', () => {
         { layout: 'container', children: [] },
         new Map(),
         createHostEagleStub({
-          dialog: {
-            showSaveDialog: async () => ({ canceled: false, filePath: 'C:/Temp/notes.md' }),
+          item: {
+            getSelected: async () => [],
+            addTags: async () => undefined,
+            addFromPath: addFromPathMock,
           },
         }),
       );
@@ -140,8 +150,14 @@ describe('runtime bindings', () => {
         content: '# {{state.documentName}}\n',
       }]);
 
+      expect(addFromPathMock).toHaveBeenCalledOnce();
       expect(mkdirMock).toHaveBeenCalledWith('C:/Temp', { recursive: true });
-      expect(writeFileMock).toHaveBeenCalledWith('C:/Temp/notes.md', '# notes\n', 'utf8');
+      expect(writeFileMock).toHaveBeenCalledOnce();
+
+      const writtenPath = writeFileMock.mock.calls[0][0] as string;
+      expect(writtenPath).toMatch(/^C:\/Temp\/notes-\d+-[a-z0-9]{6}\.md$/u);
+      expect(writeFileMock).toHaveBeenCalledWith(writtenPath, '# notes\n', 'utf8');
+      expect(addFromPathMock).toHaveBeenCalledWith(writtenPath, { name: 'notes' }, {});
     } finally {
       Object.defineProperty(globalThis, 'window', {
         value: originalWindow,

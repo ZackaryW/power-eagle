@@ -66,6 +66,13 @@ body {
   font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
 }
 
+.dark body {
+  background:
+    radial-gradient(circle at top, hsl(217 32% 18% / 0.38), transparent 28%),
+    linear-gradient(180deg, hsl(224 47% 8%) 0%, hsl(222.2 84% 4.9%) 100%);
+  color: hsl(var(--foreground));
+}
+
 #root {
   min-height: 100vh;
 }
@@ -75,6 +82,14 @@ body {
   scrollbar-color: #cbd5e1 transparent;
 }
 
+.dark * {
+  scrollbar-color: hsl(217.2 32.6% 24%) transparent;
+}
+
 ::selection {
   background: rgba(15, 23, 42, 0.12);
+}
+
+.dark ::selection {
+  background: hsl(217.2 32.6% 24% / 0.7);
 }
