@@ -55,13 +55,13 @@ export function InstalledView(props: InstalledViewProps): JSX.Element {
   }
 
   return (
-    <div className="p-5 text-slate-900 md:p-6">
+    <div className="p-5 text-foreground md:p-6">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-[-0.02em] text-slate-950">{selectedInstalled.name}</h1>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">{selectedInstalled.description}</p>
+          <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">{selectedInstalled.name}</h1>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{selectedInstalled.description}</p>
         </div>
-        <button className={`flex items-center gap-2 text-sm ${selectedInstalled.enabled ? 'text-slate-900' : 'text-slate-400'}`} onClick={() => onTogglePlugin(selectedInstalled.id)} type="button">
+        <button className={`flex items-center gap-2 text-sm ${selectedInstalled.enabled ? 'text-foreground' : 'text-muted-foreground/70'}`} onClick={() => onTogglePlugin(selectedInstalled.id)} type="button">
           <Switch checked={selectedInstalled.enabled} />
           <span>{selectedInstalled.enabled ? 'enabled' : 'disabled'}</span>
         </button>
@@ -85,7 +85,7 @@ export function InstalledView(props: InstalledViewProps): JSX.Element {
       </div>
 
       {!selectedInstalled.enabled ? (
-        <p className="mt-3 text-xs text-slate-500">enable the plugin to launch it</p>
+        <p className="mt-3 text-xs text-muted-foreground">enable the plugin to launch it</p>
       ) : null}
     </div>
   );
@@ -117,11 +117,11 @@ export function HostInspectorPopover(props: HostInspectorPopoverProps): JSX.Elem
 
   return (
     <aside className={`pointer-events-none fixed right-6 top-24 z-30 flex w-[340px] justify-end transition-all duration-200 ${isOpen ? 'translate-x-0 opacity-100' : 'translate-x-[calc(100%+1.5rem)] opacity-0'}`}>
-      <div className="pointer-events-auto w-full rounded-[22px] border border-slate-200/90 bg-white/95 p-4 shadow-[0_24px_70px_rgba(15,23,42,0.14)] backdrop-blur">
+      <div className="pointer-events-auto w-full rounded-[22px] border border-border/90 bg-card/95 p-4 shadow-[0_24px_70px_hsl(var(--foreground)/0.16)] backdrop-blur-xl">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-semibold tracking-[-0.02em] text-slate-950">Host Inspector</div>
-            <div className="text-xs text-slate-500">Runtime and event state live here, outside the plugin surface.</div>
+            <div className="text-sm font-semibold tracking-[-0.02em] text-foreground">Host Inspector</div>
+            <div className="text-xs text-muted-foreground">Runtime and event state live here, outside the plugin surface.</div>
           </div>
           <ShellButton label="hide" onClick={onToggle} />
         </div>
@@ -137,12 +137,12 @@ export function HostInspectorPopover(props: HostInspectorPopoverProps): JSX.Elem
 
         <Panel label="host events" className="mt-4">
           {hostEvents.length ? hostEvents.map((event) => (
-            <article key={event.id} className="mb-2 rounded-xl border border-slate-200 bg-slate-50 p-3 last:mb-0">
-              <div className="text-sm font-medium text-slate-900">{event.title}</div>
-              <div className="mt-1 text-xs leading-5 text-slate-500">{event.description ?? 'No description'}</div>
+            <article key={event.id} className="mb-2 rounded-xl border border-border bg-muted/35 p-3 last:mb-0">
+              <div className="text-sm font-medium text-foreground">{event.title}</div>
+              <div className="mt-1 text-xs leading-5 text-muted-foreground">{event.description ?? 'No description'}</div>
             </article>
           )) : (
-            <div className="text-xs text-slate-500">No host events yet.</div>
+            <div className="text-xs text-muted-foreground">No host events yet.</div>
           )}
         </Panel>
       </div>
@@ -192,10 +192,10 @@ export function BucketsView(props: BucketsViewProps): JSX.Element {
 
   if (!gitAvailable) {
     return (
-      <div className="p-5 text-slate-900 md:p-6">
+      <div className="p-5 text-foreground md:p-6">
         <Panel label="buckets unavailable">
           <div className="space-y-3">
-            <div className="text-sm text-slate-600">
+            <div className="text-sm text-muted-foreground">
               Git process execution is not available in this runtime, so remote bucket clone and sync actions are disabled.
             </div>
             <ShellButton label="show error" onClick={onGitUnavailable} />
@@ -206,20 +206,20 @@ export function BucketsView(props: BucketsViewProps): JSX.Element {
   }
 
   return (
-    <div className="p-5 text-slate-900 md:p-6">
+    <div className="p-5 text-foreground md:p-6">
       <Panel label="managed buckets">
         {bucketRecords.map((bucket) => (
           <div
             key={bucket.id}
-            className={`mb-2 flex flex-wrap items-center gap-3 rounded-xl border px-3 py-3 last:mb-0 ${bucket.id === selectedBucket.id ? 'border-slate-200 bg-slate-50 shadow-sm' : 'border-slate-200 bg-white'}`}
+            className={`mb-2 flex flex-wrap items-center gap-3 rounded-xl border px-3 py-3 last:mb-0 ${bucket.id === selectedBucket.id ? 'border-border bg-accent/40 shadow-sm' : 'border-border bg-card/70'}`}
           >
             <button
               className="min-w-0 flex-1 text-left"
               onClick={() => setSelectedBucketId(bucket.id)}
               type="button"
             >
-              <div className="text-sm font-medium text-slate-900">{bucket.name}</div>
-              <div className="mt-1 truncate text-xs text-slate-500">{bucket.url}</div>
+              <div className="text-sm font-medium text-foreground">{bucket.name}</div>
+              <div className="mt-1 truncate text-xs text-muted-foreground">{bucket.url}</div>
             </button>
             <Badge className="rounded-md px-2 py-1 text-[10px]" variant="outline">synced {bucket.lastSync}</Badge>
             {!bucket.isLocal ? <ShellButton label="sync" onClick={() => {
@@ -268,13 +268,13 @@ export function BucketsView(props: BucketsViewProps): JSX.Element {
         {selectedBucket.plugins.length ? selectedBucket.plugins.map((plugin) => {
           const installed = installedPlugins.find((entry) => entry.id === plugin.id);
           return (
-            <div key={plugin.id} className="mb-2 flex flex-wrap items-center gap-3 border-b border-slate-200 py-3 last:mb-0 last:border-b-0">
+            <div key={plugin.id} className="mb-2 flex flex-wrap items-center gap-3 border-b border-border py-3 last:mb-0 last:border-b-0">
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium text-slate-900">
+                <div className="text-sm font-medium text-foreground">
                   {plugin.name}
-                  <span className="ml-2 text-xs font-normal text-slate-500">v{plugin.version}</span>
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">v{plugin.version}</span>
                 </div>
-                <div className="mt-1 text-xs text-slate-500">{plugin.id} · {plugin.description}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{plugin.id} · {plugin.description}</div>
               </div>
               {installed ? (
                 <Badge className="rounded-md px-2 py-1 text-[10px]" variant={installed.version === plugin.version ? 'default' : 'secondary'}>
@@ -297,7 +297,7 @@ export function BucketsView(props: BucketsViewProps): JSX.Element {
             </div>
           );
         }) : (
-          <div className="text-sm text-slate-500">No plugin folders are present in this bucket yet.</div>
+          <div className="text-sm text-muted-foreground">No plugin folders are present in this bucket yet.</div>
         )}
       </Panel>
     </div>
@@ -333,7 +333,7 @@ export function UrlInstallView(props: UrlInstallViewProps): JSX.Element {
   } = props;
 
   return (
-    <div className="p-5 text-slate-900 md:p-6">
+    <div className="p-5 text-foreground md:p-6">
       <Panel label="install from url">
         <div className="flex flex-col gap-2 md:flex-row">
           <Input
@@ -400,17 +400,17 @@ export function UrlInstallView(props: UrlInstallViewProps): JSX.Element {
             setLocalPluginPathInput('');
           }} />
         </div>
-        <p className="mt-3 text-xs text-slate-500">Point this at a v2 plugin folder such as the repo fixture at `src/fixtures/file-creator/file-creator`.</p>
+        <p className="mt-3 text-xs text-muted-foreground">Point this at a v2 plugin folder such as the repo fixture at `src/fixtures/file-creator/file-creator`.</p>
       </Panel>
 
       <Panel label="recent host events" className="mt-5">
         {hostEvents.length ? hostEvents.map((event) => (
-          <article key={event.id} className="mb-2 rounded-xl border border-slate-200 bg-slate-50 p-3 last:mb-0">
-            <div className="text-sm font-medium text-slate-900">{event.title}</div>
-            <div className="mt-1 text-xs leading-5 text-slate-500">{event.description ?? 'No description'}</div>
+          <article key={event.id} className="mb-2 rounded-xl border border-border bg-muted/35 p-3 last:mb-0">
+            <div className="text-sm font-medium text-foreground">{event.title}</div>
+            <div className="mt-1 text-xs leading-5 text-muted-foreground">{event.description ?? 'No description'}</div>
           </article>
         )) : (
-          <div className="text-xs text-slate-500">No host events yet.</div>
+          <div className="text-xs text-muted-foreground">No host events yet.</div>
         )}
       </Panel>
     </div>
@@ -431,10 +431,10 @@ export function GitUnavailableDialog({ isOpen, onClose }: GitUnavailableDialogPr
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/30 px-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
-        <div className="text-lg font-semibold tracking-[-0.02em] text-slate-950">Git Not Available</div>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-background/70 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-[0_24px_70px_hsl(var(--foreground)/0.18)]">
+        <div className="text-lg font-semibold tracking-[-0.02em] text-foreground">Git Not Available</div>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
           The buckets view requires host process execution for git clone and git pull. This runtime does not expose git execution, so bucket management is disabled.
         </p>
         <div className="mt-5 flex justify-end">
